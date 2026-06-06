@@ -102,7 +102,6 @@ body { background:#edf1f7; padding:20px; }
     <input type="text" id="loginDob" placeholder="Date of Birth (DD/MM/YYYY) or Password (Admin)">
     <button id="loginBtn">Login</button>
     <div id="loginError" class="error-msg"></div>
-    <!-- demo note removed -->
   </div>
 </div>
 
@@ -154,13 +153,13 @@ let currentUser = null;
 // Migrate existing DOB from DD/MM/YYYY to YYYY-MM-DD
 function migrateDob() {
     const convert = (str) => {
-        if (!str || str.includes('-')) return str; // already YYYY-MM-DD or empty
+        if (!str || str.includes('-')) return str;
         const parts = str.split('/');
         if (parts.length === 3) {
             const [day, month, year] = parts;
             return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
         }
-        return str; // fallback
+        return str;
     };
     let changed = false;
     students.forEach(s => {
@@ -192,7 +191,7 @@ let globalTeacherSignatureImage = localStorage.getItem('globalTeacherSignatureIm
 
 if (!students.length) {
     students.push({
-        id:1001, name:"Rahul Sharma", mobile:"9876543210", dob:"2010-01-01", // YYYY-MM-DD
+        id:1001, name:"Rahul Sharma", mobile:"9876543210", dob:"2010-01-01",
         class:"5-A", roll:"23", father:"Mr. Suresh Sharma", contact:"9876543210",
         address:"12, Green Park, Delhi", photoImage:"", positions:{}
     });
@@ -495,29 +494,38 @@ function viewStudentInfo(id){
 }
 function closeStudentView(){document.getElementById('studentViewModal').style.display='none';}
 
-// ---------- BACKUP ----------
+// ---------- BACKUP (GLOBAL IMAGES EXCLUDED) ----------
 function exportAllData(){
-    const backup={students,teachers,globalBgImage,globalSignatureImage,globalTeacherBgImage,globalTeacherSignatureImage};
-    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='id_card_backup.json';a.click();URL.revokeObjectURL(a.href);
+    // Export only students and teachers, no global images
+    const backup = { students, teachers };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'id_card_backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
 }
+
 function importBackup(file){
-    const reader=new FileReader();
-    reader.onload=function(e){
+    const reader = new FileReader();
+    reader.onload = function(e){
         try{
-            const data=JSON.parse(e.target.result);
-            if(data.students&&data.teachers){
-                students=data.students;teachers=data.teachers;
-                globalBgImage=data.globalBgImage||'';globalSignatureImage=data.globalSignatureImage||'';
-                globalTeacherBgImage=data.globalTeacherBgImage||'';globalTeacherSignatureImage=data.globalTeacherSignatureImage||'';
-                localStorage.setItem('idCardStudents',JSON.stringify(students));
-                localStorage.setItem('idCardTeachers',JSON.stringify(teachers));
-                localStorage.setItem('globalBgImage',globalBgImage);localStorage.setItem('globalSignatureImage',globalSignatureImage);
-                localStorage.setItem('globalTeacherBgImage',globalTeacherBgImage);localStorage.setItem('globalTeacherSignatureImage',globalTeacherSignatureImage);
+            const data = JSON.parse(e.target.result);
+            if(data.students && data.teachers){
+                students = data.students;
+                teachers = data.teachers;
+                // Global images remain as they were before import (not overwritten)
+                localStorage.setItem('idCardStudents', JSON.stringify(students));
+                localStorage.setItem('idCardTeachers', JSON.stringify(teachers));
                 migrateDob(); // ensure imported data is also converted
-                alert('Backup imported successfully! Reloading...');location.reload();
-            }else alert('Invalid backup file.');
-        }catch(err){alert('Error reading backup: '+err);}
+                alert('Backup imported successfully! Reloading...');
+                location.reload();
+            } else {
+                alert('Invalid backup file – missing students or teachers data.');
+            }
+        } catch(err) {
+            alert('Error reading backup: ' + err);
+        }
     };
     reader.readAsText(file);
 }
@@ -605,7 +613,6 @@ function logout(){
     document.getElementById('loginContainer').style.display='flex';
     document.getElementById('loginMobile').value='';
     document.getElementById('loginDob').value='';
-    // reset login DOB field to text because role is back to default
     document.getElementById('loginDob').type = 'text';
     document.getElementById('loginDob').placeholder = 'Date of Birth (DD/MM/YYYY) or Password (Admin)';
 }
