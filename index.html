@@ -369,11 +369,11 @@ function renderStudentMode(){
       </select>
     </div>
     <input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()"><div id="studentList" class="list-container"></div><button class="add-btn" id="addStudentBtn">+ Add New Student</button><div id="studentFormDiv" class="data-form" style="display:none;"><h3 id="formTitle">Add Student</h3><label>Name</label><input id="studentName"><label>Class</label><select id="studentClass">${getClassOptions()}</select><label>Roll</label><input id="studentRoll"><label>Date of Birth</label><input type="date" id="studentDob"><label>Father</label><input id="studentFather"><label>Contact</label><input id="studentContact"><label>Address</label><input id="studentAddress"><label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div></div></div>
-    <div class="card-area"><h3>🪪 Student ID Card</h3><div id="studentCard"><img id="bgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div><div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div><div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"></div><div class="card-buttons"><button id="downloadBtn">⬇️ Download</button><button id="lockBtn">🔓 Unlock</button><button id="resetBtn">⟳ Reset Positions</button></div></div>`;
+    <div class="card-area"><h3>🪪 Student ID Card</h3><div id="studentCard"><img id="bgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div><div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div><div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"></div><div class="card-buttons"><button id="downloadBtn">⬇️ Download</button><button id="lockBtn">🔓 Unlock</button><button id="resetBtn">⟳ Reset Positions</button><button id="saveToServerBtn" style="background:#17a2b8;">💾 Save to Server</button></div></div>`;
 }
 function renderTeacherMode(){
     return `<div class="management-panel"><h2>👩‍🏫 Teacher Management</h2><input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()"><div id="teacherList" class="list-container"></div><button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button><div id="teacherFormDiv" class="data-form" style="display:none;"><h3 id="teacherFormTitle">Add Teacher</h3><label>Name</label><input id="teacherName"><label>Father</label><input id="teacherFatherName"><label>Mobile</label><input id="teacherMobile"><label>Date of Birth</label><input type="date" id="teacherDob"><label>Designation</label><input id="teacherDesignation"><label>Address</label><input id="teacherAddress"><label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div></div></div>
-    <div class="card-area"><h3>🪪 Teacher ID Card</h3><div id="teacherCard"><img id="teacherBgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div><div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"></div><div class="card-buttons"><button id="teacherDownloadBtn">⬇️ Download</button><button id="teacherLockBtn">🔓 Unlock</button><button id="teacherResetBtn">⟳ Reset Positions</button></div></div>`;
+    <div class="card-area"><h3>🪪 Teacher ID Card</h3><div id="teacherCard"><img id="teacherBgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div><div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"></div><div class="card-buttons"><button id="teacherDownloadBtn">⬇️ Download</button><button id="teacherLockBtn">🔓 Unlock</button><button id="teacherResetBtn">⟳ Reset Positions</button><button id="teacherSaveToServerBtn" style="background:#17a2b8;">💾 Save to Server</button></div></div>`;
 }
 
 // ---------- ADMIN STATS ----------
@@ -397,6 +397,7 @@ function switchAdminMode(mode){
         document.getElementById('downloadBtn').onclick=downloadStudentCard;
         document.getElementById('lockBtn').onclick=toggleStudentLock;
         document.getElementById('resetBtn').onclick=resetStudentPos;
+        document.getElementById('saveToServerBtn').onclick=saveStudentCardToServer;
         document.getElementById('globalBgUpload').onchange=e=>handleStudentBg(e.target.files[0]);
         document.getElementById('globalSigUpload').onchange=e=>handleStudentSig(e.target.files[0]);
         renderStudentList();
@@ -411,6 +412,7 @@ function switchAdminMode(mode){
         document.getElementById('teacherDownloadBtn').onclick=downloadTeacherCard;
         document.getElementById('teacherLockBtn').onclick=toggleTeacherLock;
         document.getElementById('teacherResetBtn').onclick=resetTeacherPos;
+        document.getElementById('teacherSaveToServerBtn').onclick=saveTeacherCardToServer;
         document.getElementById('teacherBgUpload').onchange=e=>handleTeacherBg(e.target.files[0]);
         document.getElementById('teacherSigUpload').onchange=e=>handleTeacherSig(e.target.files[0]);
         renderTeacherList();
@@ -541,6 +543,44 @@ function savePassword(){
     alert('Password changed successfully!');closeChangePassword();
 }
 
+// ---------- SAVE TO SERVER ----------
+function saveStudentCardToServer() {
+  const cardElement = document.getElementById('studentCard');
+  html2canvas(cardElement, { scale: 8, backgroundColor: '#ffffff' }).then(canvas => {
+    const base64ImageData = canvas.toDataURL('image/png');
+    const name = document.getElementById('showName').innerText.trim() || 'student';
+    const filename = name.replace(/\s+/g, '_') + '_ID_Card.png';
+
+    // Replace with your current Cloudflare Tunnel URL
+    fetch("https://characterization-lived-seller-neural.trycloudflare.com/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, data: base64ImageData })
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(err => alert('Error saving: ' + err));
+  });
+}
+
+function saveTeacherCardToServer() {
+  const cardElement = document.getElementById('teacherCard');
+  html2canvas(cardElement, { scale: 8, backgroundColor: '#ffffff' }).then(canvas => {
+    const base64ImageData = canvas.toDataURL('image/png');
+    const name = document.getElementById('tShowName').innerText.trim() || 'teacher';
+    const filename = name.replace(/\s+/g, '_') + '_ID_Card.png';
+
+    fetch("https://characterization-lived-seller-neural.trycloudflare.com/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, data: base64ImageData })
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(err => alert('Error saving: ' + err));
+  });
+}
+
 // ---------- DYNAMIC TOP BAR ----------
 function updateTopBarTitle(){
     const titleEl=document.getElementById('topBarTitle');
@@ -580,7 +620,6 @@ function initRoleUI(){
     }
 }
 
-// --- UPDATED doLogin with flexible date comparison ---
 function doLogin(){
     const role = document.getElementById('loginRole').value;
     const mobileOrUser = document.getElementById('loginMobile').value.trim();
@@ -588,43 +627,30 @@ function doLogin(){
     const err = document.getElementById('loginError');
     err.innerText = '';
 
-    // Convert any date string to YYYY-MM-DD
     const normalizeDate = (str) => {
         if (!str) return '';
-        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; // already YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
         const parts = str.split('/');
         if (parts.length === 3) {
             const [day, month, year] = parts;
             return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
         }
-        return str; // fallback
+        return str;
     };
 
     if (role === 'student') {
         const inputDob = normalizeDate(dobOrPass);
         const s = students.find(s => normalizeDate(s.dob) === inputDob && s.mobile === mobileOrUser);
-        if (s) {
-            currentUser = { role: 'student', id: s.id, name: s.name };
-            showApp();
-        } else {
-            err.innerText = 'Invalid mobile or DOB';
-        }
+        if (s) { currentUser = { role: 'student', id: s.id, name: s.name }; showApp(); }
+        else err.innerText = 'Invalid mobile or DOB';
     } else if (role === 'teacher') {
         const inputDob = normalizeDate(dobOrPass);
         const t = teachers.find(t => normalizeDate(t.dob) === inputDob && t.mobile === mobileOrUser);
-        if (t) {
-            currentUser = { role: 'teacher', id: t.id, name: t.name };
-            showApp();
-        } else {
-            err.innerText = 'Invalid teacher credentials';
-        }
+        if (t) { currentUser = { role: 'teacher', id: t.id, name: t.name }; showApp(); }
+        else err.innerText = 'Invalid teacher credentials';
     } else if (role === 'admin') {
-        if (mobileOrUser === 'admin' && dobOrPass === adminPassword) {
-            currentUser = { role: 'admin', name: 'Admin' };
-            showApp();
-        } else {
-            err.innerText = 'Invalid admin credentials';
-        }
+        if (mobileOrUser === 'admin' && dobOrPass === adminPassword) { currentUser = { role: 'admin', name: 'Admin' }; showApp(); }
+        else err.innerText = 'Invalid admin credentials';
     }
 }
 
