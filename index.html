@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ID Card Management System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
+body { background:#edf1f7; padding:20px; }
+
+.login-container { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:1000; }
+.login-box { background:#fff; padding:30px; border-radius:20px; width:340px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
+.login-box h2 { color:#001B4E; margin-bottom:20px; }
+.login-box select, .login-box input { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:1px solid #ccc; }
+.login-box button { width:100%; padding:12px; background:#001B4E; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px; }
+.error-msg { color:red; margin-top:10px; font-size:13px; }
+.demo-note { background:#f1f1f1; padding:10px; border-radius:10px; margin-top:15px; font-size:12px; text-align:left; }
+
+.main-app { display:none; }
+.top-bar { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px 20px; border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.top-bar h1 { color:#001B4E; font-size:1.5rem; display:flex; align-items:center; gap:10px; }
+.top-bar h1 img { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #001B4E; }
+.logout-btn { background:#dc3545; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
+
+.stats-row { display:flex; gap:20px; justify-content:center; margin-bottom:15px; }
+.stat-circle { width:90px; height:90px; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.1); display:flex; flex-direction:column; align-items:center; justify-content:center; border:3px solid #001B4E; }
+.stat-circle .stat-number { font-size:24px; font-weight:bold; color:#001B4E; }
+.stat-circle .stat-label { font-size:11px; color:#555; margin-top:2px; }
+
+.mode-toggle { display:flex; gap:10px; justify-content:center; margin-bottom:20px; }
+.mode-btn { padding:10px 25px; font-size:16px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; background:#ccc; color:#333; }
+.mode-btn.active { background:#001B4E; color:#fff; }
+
+.container { display:flex; gap:25px; flex-wrap:wrap; justify-content:center; }
+
+.management-panel { width:380px; background:#fff; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15); padding:20px; }
+.management-panel h2 { color:#001B4E; margin-bottom:15px; text-align:center; }
+.search-box { width:100%; padding:8px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; }
+.list-container { max-height:350px; overflow-y:auto; border:1px solid #ccc; border-radius:10px; margin-bottom:15px; background:#f9f9f9; }
+.list-item { padding:10px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.list-item:hover { background:#e3f2fd; }
+.list-item.selected { background:#bbdef5; font-weight:bold; }
+.item-name { font-size:14px; }
+.item-actions button { margin-left:8px; padding:4px 8px; border:none; border-radius:5px; cursor:pointer; font-size:11px; }
+.edit-btn { background:#ffc107; color:#000; }
+.delete-btn { background:#dc3545; color:#fff; }
+.view-btn { background:#17a2b8; color:#fff; }
+.add-btn { width:100%; padding:10px; background:#28a745; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-bottom:10px; }
+.data-form { background:#f1f1f1; padding:15px; border-radius:15px; margin-top:10px; }
+.data-form h3 { margin-bottom:10px; color:#001B4E; }
+.data-form label { font-weight:bold; font-size:12px; display:block; margin-top:8px; }
+.data-form input, .data-form select { width:100%; padding:8px; margin-top:3px; border-radius:8px; border:1px solid #ccc; font-size:13px; }
+.data-form button { margin-top:12px; padding:8px; background:#001B4E; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+.form-buttons { display:flex; gap:10px; }
+.cancel-btn { background:#6c757d !important; }
+
+.card-area { background:#fff; border-radius:20px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; align-items:center; }
+.card-area h3 { color:#001B4E; margin-bottom:15px; }
+
+#studentCard, #teacherCard { position:relative; width:260px; height:410px; background:#fff; overflow:hidden; border-radius:14px; border:2px solid #001B4E; box-shadow:0 5px 15px rgba(0,0,0,0.2); }
+.card-bg { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
+.photo-box { width:72px; height:90px; border-radius:10px; overflow:hidden; background:#eee; position:absolute; left:94px; top:132px; z-index:3; border:2px solid #E3A81C; cursor:move; }
+.photo-box img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.name-bar { width:170px; height:20px; background:linear-gradient(135deg,#001B4E,#0A2E73); border-radius:5px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10px; position:absolute; left:45px; top:235px; z-index:3; cursor:move; text-transform:uppercase; padding:0 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.info { width:220px; background:rgba(255,255,255,0.97); border:1.5px solid #D9A520; border-radius:8px; padding:5px; position:absolute; left:20px; top:265px; z-index:3; font-size:7px; cursor:move; }
+.row { display:flex; align-items:flex-start; padding:2px 0; }
+.label { font-weight:700; width:40%; font-size:7px; color:#001B4E; }
+.colon { width:5%; text-align:center; font-weight:bold; color:#001B4E; }
+.value { width:55%; padding-left:3px; word-break:break-word; font-size:7px; font-weight:600; color:#001B4E; }
+.address-row { align-items:flex-start; }
+.address-label { width:20%; }
+.address-value { width:75%; line-height:1.2; word-break:break-word; color:#001B4E; }
+.signature-box { position:absolute; left:175px; top:355px; z-index:5; cursor:move; }
+.signature-box img { width:70px; height:auto; display:block; mix-blend-mode:multiply; pointer-events:none; }
+.principal-text { position:absolute; left:185px; top:392px; font-size:8px; font-weight:bold; color:#001B4E; z-index:5; cursor:move; }
+.draggable { cursor:move; user-select:none; }
+.dragging { opacity:0.7; outline:2px dashed #E3A81C; }
+
+.card-buttons { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.card-buttons button { padding:8px 12px; border:none; border-radius:8px; background:#001B4E; color:#fff; cursor:pointer; }
+.global-uploads { margin-top:10px; text-align:center; background:#f8f9fa; padding:10px; border-radius:12px; }
+.global-uploads label { font-weight:bold; font-size:12px; display:inline-block; margin:0 10px; }
+.global-uploads input { margin:5px; }
+
+.profile-photo { width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #001B4E; margin:0 auto 15px; display:block; }
+.info-row { display:flex; padding:8px 0; border-bottom:1px solid #e2e8f0; }
+.info-label { font-weight:bold; width:130px; color:#1e293b; }
+.info-value { flex:1; color:#0f172a; }
+
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center; }
+.modal-content { background:#fff; border-radius:20px; padding:20px; max-width:400px; width:90%; position:relative; }
+.modal-close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; color:#001B4E; }
+</style>
+</head>
+<body>
+
+<div id="loginContainer" class="login-container">
+  <div class="login-box">
+    <h2>🔐 ID Card Login</h2>
+    <select id="loginRole"><option value="student">👨‍🎓 Student</option><option value="teacher">👩‍🏫 Teacher</option><option value="admin">⚙️ Admin</option></select>
+    <input type="text" id="loginMobile" placeholder="Mobile Number (Student/Teacher) or Username (Admin)">
+    <input type="text" id="loginDob" placeholder="Date of Birth (DD/MM/YYYY) or Password (Admin)">
+    <button id="loginBtn">Login</button>
+    <div id="loginError" class="error-msg"></div>
+    <div class="demo-note"><strong>Demo:</strong><br>Student: 9876543210 / 01/01/2010<br>Teacher: (set via admin) mobile+DOB<br>Admin: admin / admin123</div>
+  </div>
+</div>
+
+<div id="mainApp" class="main-app">
+  <div class="top-bar">
+    <h1 id="topBarTitle">📇 ID Card Management System</h1>
+    <button class="logout-btn" id="logoutBtn">🚪 Logout</button>
+  </div>
+  <div id="backupPanel" style="text-align:center; margin-bottom:15px; display:none;">
+    <button id="exportBackupBtn" style="background:#007bff; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer;">📥 Export All Data</button>
+    <button id="importBackupBtn" style="background:#28a745; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer; margin-left:10px;">📤 Import Backup</button>
+    <input type="file" id="importBackupFile" accept=".json" style="display:none;">
+  </div>
+  <div id="adminStatsRow" class="stats-row" style="display:none;">
+    <div class="stat-circle"><span class="stat-number" id="totalStudents">0</span><span class="stat-label">Students</span></div>
+    <div class="stat-circle"><span class="stat-number" id="totalTeachers">0</span><span class="stat-label">Teachers</span></div>
+  </div>
+  <div id="modeToggle" class="mode-toggle"></div>
+  <div class="container" id="mainContainer"></div>
+</div>
+
+<div id="studentViewModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeStudentView()">&times;</span>
+    <div id="studentViewContent"></div>
+  </div>
+</div>
+
+<script>
+// ---------- DATA ----------
+let students = JSON.parse(localStorage.getItem('idCardStudents')) || [];
+let teachers = JSON.parse(localStorage.getItem('idCardTeachers')) || [];
+let currentUser = null;
+
+let globalBgImage = localStorage.getItem('globalBgImage') || '';
+let globalSignatureImage = localStorage.getItem('globalSignatureImage') || '';
+let globalTeacherBgImage = localStorage.getItem('globalTeacherBgImage') || '';
+let globalTeacherSignatureImage = localStorage.getItem('globalTeacherSignatureImage') || '';
+
+if (!students.length) {
+    students.push({id:1001,name:"Rahul Sharma",mobile:"9876543210",dob:"01/01/2010",class:"5",roll:"23",father:"Mr. Suresh Sharma",contact:"9876543210",address:"12, Green Park, Delhi",photoImage:"",positions:{}});
+    localStorage.setItem('idCardStudents',JSON.stringify(students));
+}
+if (!teachers.length) {
+    teachers.push({id:2001,name:"Mrs. Sunita Mehta",fatherName:"Mr. Ramesh Mehta",mobile:"9876543211",dob:"15/05/1985",designation:"Senior Teacher",address:"45, Teacher Colony, Delhi",photo:"",positions:{}});
+    localStorage.setItem('idCardTeachers',JSON.stringify(teachers));
+}
+
+function fileToBase64(file, maxKB=60) {
+    return new Promise((resolve, reject) => {
+        if (!file) { resolve(null); return; }
+        if (file.size > maxKB * 1024) reject(`File exceeds ${maxKB} KB`);
+        const r = new FileReader();
+        r.onload = e => resolve(e.target.result);
+        r.onerror = () => reject("Read error");
+        r.readAsDataURL(file);
+    });
+}
+function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+
+// ---------- GLOBAL IMAGES ----------
+function applyStudentGlobal() {
+    const bg = document.getElementById('bgPreview');
+    const sig = document.getElementById('signaturePreview');
+    if (bg) bg.src = globalBgImage || '';
+    if (sig) sig.src = globalSignatureImage || '';
+}
+function saveStudentGlobal() { localStorage.setItem('globalBgImage', globalBgImage); localStorage.setItem('globalSignatureImage', globalSignatureImage); applyStudentGlobal(); }
+async function handleStudentBg(file) { if(!file) return; try { const d=await fileToBase64(file,2000); if(d) globalBgImage=d; saveStudentGlobal(); } catch(err) { alert('Background upload failed: '+err); } }
+async function handleStudentSig(file) { if(!file) return; try { const d=await fileToBase64(file,2000); if(d) globalSignatureImage=d; saveStudentGlobal(); } catch(err) { alert('Signature upload failed: '+err); } }
+function applyTeacherGlobal() {
+    const bg = document.getElementById('teacherBgPreview');
+    const sig = document.getElementById('teacherSignaturePreview');
+    if (bg) bg.src = globalTeacherBgImage || '';
+    if (sig) sig.src = globalTeacherSignatureImage || '';
+}
+function saveTeacherGlobal() { localStorage.setItem('globalTeacherBgImage', globalTeacherBgImage); localStorage.setItem('globalTeacherSignatureImage', globalTeacherSignatureImage); applyTeacherGlobal(); }
+async function handleTeacherBg(file) { if(!file) return; try { const d=await fileToBase64(file,2000); if(d) globalTeacherBgImage=d; saveTeacherGlobal(); } catch(err) { alert('Teacher background upload failed: '+err); } }
+async function handleTeacherSig(file) { if(!file) return; try { const d=await fileToBase64(file,2000); if(d) globalTeacherSignatureImage=d; saveTeacherGlobal(); } catch(err) { alert('Teacher signature upload failed: '+err); } }
+
+// ---------- STUDENT MANAGEMENT ----------
+let currentStudentId=null, studentSearchTerm="", adminStudentClassFilter="";
+function saveStudents() { localStorage.setItem('idCardStudents',JSON.stringify(students)); renderStudentList(); updateAdminStats(); }
+function renderStudentList() {
+    const c=document.getElementById('studentList'); if(!c) return;
+    let f=students.filter(s=>s.name.toLowerCase().includes(studentSearchTerm.toLowerCase())||(s.class&&s.class.toLowerCase().includes(studentSearchTerm.toLowerCase())));
+    if(adminStudentClassFilter) f=f.filter(s=>s.class===adminStudentClassFilter);
+    if(!f.length){c.innerHTML='<div style="padding:15px;">No students.</div>';return;}
+    c.innerHTML=f.map(s=>`<div class="list-item ${currentStudentId===s.id?'selected':''}" data-id="${s.id}"><span class="item-name">${escapeHtml(s.name)} (${s.class||''})</span><div class="item-actions"><button class="view-btn" data-id="${s.id}">👁️ View</button><button class="edit-btn" data-id="${s.id}">✏️</button><button class="delete-btn" data-id="${s.id}">🗑️</button></div></div>`).join('');
+    c.querySelectorAll('.list-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.classList.contains('edit-btn')||e.target.classList.contains('delete-btn')||e.target.classList.contains('view-btn'))return;currentStudentId=parseInt(el.dataset.id);loadStudentToCard(currentStudentId);renderStudentList();});});
+    c.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();viewStudentInfo(parseInt(b.dataset.id));}));
+    c.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openStudentForm(parseInt(b.dataset.id));}));
+    c.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();if(confirm('Delete?')){students=students.filter(s=>s.id!==parseInt(b.dataset.id));if(currentStudentId===parseInt(b.dataset.id))currentStudentId=null;saveStudents();if(!currentStudentId)clearStudentCard();}}));
+}
+function openStudentForm(id=null){
+    document.getElementById('studentFormDiv').style.display='block';
+    if(!id){currentEditId=null;document.getElementById('formTitle').innerText='Add Student';['studentName','studentClass','studentRoll','studentDob','studentFather','studentContact','studentAddress'].forEach(x=>document.getElementById(x).value='');document.getElementById('studentPhotoFile').value='';}
+    else{const s=students.find(s=>s.id===id);if(!s)return;currentEditId=id;document.getElementById('formTitle').innerText='Edit Student';document.getElementById('studentName').value=s.name||'';document.getElementById('studentClass').value=s.class||'';document.getElementById('studentRoll').value=s.roll||'';document.getElementById('studentDob').value=s.dob||'';document.getElementById('studentFather').value=s.father||'';document.getElementById('studentContact').value=s.contact||'';document.getElementById('studentAddress').value=s.address||'';}
+}
+let currentEditId=null;
+async function saveStudentForm(){
+    const name=document.getElementById('studentName').value.trim();if(!name){alert('Name required');return;}
+    const data={name,class:document.getElementById('studentClass').value,roll:document.getElementById('studentRoll').value,dob:document.getElementById('studentDob').value,father:document.getElementById('studentFather').value,contact:document.getElementById('studentContact').value,address:document.getElementById('studentAddress').value};
+    const file=document.getElementById('studentPhotoFile').files[0];
+    try{var photo=await fileToBase64(file,60);}catch(e){alert(e);return;}
+    if(currentEditId===null){const id=Date.now();students.push({id,...data,mobile:data.contact,photoImage:photo,positions:{}});currentStudentId=id;}
+    else{const idx=students.findIndex(s=>s.id===currentEditId);if(idx!==-1)students[idx]={...students[idx],...data,photoImage:photo||students[idx].photoImage};currentStudentId=currentEditId;}
+    saveStudents();loadStudentToCard(currentStudentId);document.getElementById('studentFormDiv').style.display='none';currentEditId=null;
+}
+function cancelStudentForm(){document.getElementById('studentFormDiv').style.display='none';currentEditId=null;}
+function filterStudentList(){const inp=document.getElementById('studentSearch');if(inp)studentSearchTerm=inp.value;renderStudentList();}
+function filterAdminStudentByClass(){adminStudentClassFilter=document.getElementById('adminStudentClassFilter')?.value||'';renderStudentList();}
+
+// ---------- STUDENT CARD ----------
+let studentLocked=false;
+function clearStudentCard(){if(!document.getElementById('studentCard'))return;document.getElementById('showName').innerText='YOUR NAME';['showClass','showRoll','showDob','showFather','showContact','showAddress'].forEach(x=>document.getElementById(x).innerText='');document.getElementById('photoPreview').src='';applyStudentGlobal();}
+function loadStudentToCard(id){
+    const s=students.find(s=>s.id===id);if(!s||!document.getElementById('showName'))return;
+    document.getElementById('showName').innerText=s.name||'YOUR NAME';document.getElementById('showClass').innerText=s.class||'';document.getElementById('showRoll').innerText=s.roll||'';document.getElementById('showDob').innerText=s.dob||'';document.getElementById('showFather').innerText=s.father||'';document.getElementById('showContact').innerText=s.contact||'';document.getElementById('showAddress').innerText=s.address||'';
+    if(s.photoImage)document.getElementById('photoPreview').src=s.photoImage;
+    applyStudentGlobal();
+    if(s.positions)document.querySelectorAll('#studentCard .draggable').forEach(el=>{const id=el.getAttribute('data-id');if(id&&s.positions[id]){el.style.left=s.positions[id].left;el.style.top=s.positions[id].top;}});
+}
+function resetStudentPos(){if(studentLocked){alert('Unlock first');return;}document.querySelectorAll('#studentCard .draggable').forEach(el=>{const l=el.getAttribute('data-original-left');const t=el.getAttribute('data-original-top');if(l&&t){el.style.left=l+'px';el.style.top=t+'px';}});saveStudentPositions();}
+function toggleStudentLock(){studentLocked=!studentLocked;document.getElementById('lockBtn').innerText=studentLocked?'🔒 Locked':'🔓 Unlock';}
+function downloadStudentCard(){html2canvas(document.getElementById('studentCard'),{scale:8,backgroundColor:'#ffffff'}).then(c=>c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(document.getElementById('showName').innerText||'student')+'_ID_Card.png';a.click();}));}
+let studentDrag=null,sOffX=0,sOffY=0;
+function sStart(e){if(studentLocked)return;studentDrag=e.currentTarget;const r=studentDrag.getBoundingClientRect(),cr=document.getElementById('studentCard').getBoundingClientRect();sOffX=e.clientX-r.left;sOffY=e.clientY-r.top;studentDrag.classList.add('dragging');e.preventDefault();}
+function sMove(e){if(!studentDrag)return;const cr=document.getElementById('studentCard').getBoundingClientRect(),er=studentDrag.getBoundingClientRect();let l=e.clientX-cr.left-sOffX,t=e.clientY-cr.top-sOffY;l=Math.min(Math.max(l,0),cr.width-er.width);t=Math.min(Math.max(t,0),cr.height-er.height);studentDrag.style.left=l+'px';studentDrag.style.top=t+'px';}
+function sEnd(){if(studentDrag){studentDrag.classList.remove('dragging');saveStudentPositions();studentDrag=null;}}
+function saveStudentPositions(){if(!currentStudentId)return;const s=students.find(s=>s.id===currentStudentId);if(s){const pos={};document.querySelectorAll('#studentCard .draggable').forEach(el=>{const id=el.getAttribute('data-id');if(id)pos[id]={left:el.style.left,top:el.style.top};});s.positions=pos;saveStudents();}}
+function attachStudentDrag(){document.querySelectorAll('#studentCard .draggable').forEach(el=>{el.removeEventListener('mousedown',sStart);el.addEventListener('mousedown',sStart);});}
+
+// ---------- TEACHER MANAGEMENT ----------
+let teacherSearchTerm="",currentTeacherCardId=null;
+function saveTeachers(){localStorage.setItem('idCardTeachers',JSON.stringify(teachers));renderTeacherList();updateAdminStats();}
+function renderTeacherList(){
+    const c=document.getElementById('teacherList');if(!c)return;
+    const f=teachers.filter(t=>t.name.toLowerCase().includes(teacherSearchTerm.toLowerCase())||t.mobile.includes(teacherSearchTerm));
+    if(!f.length){c.innerHTML='<div style="padding:15px;">No teachers.</div>';return;}
+    c.innerHTML=f.map(t=>`<div class="list-item ${currentTeacherCardId===t.id?'selected':''}" data-id="${t.id}"><span class="item-name">${escapeHtml(t.name)} (${t.mobile})</span><div class="item-actions"><button class="edit-teacher-btn" data-id="${t.id}">✏️</button><button class="delete-teacher-btn" data-id="${t.id}">🗑️</button></div></div>`).join('');
+    c.querySelectorAll('.list-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.classList.contains('edit-teacher-btn')||e.target.classList.contains('delete-teacher-btn'))return;currentTeacherCardId=parseInt(el.dataset.id);loadTeacherToCard(currentTeacherCardId);renderTeacherList();});});
+    c.querySelectorAll('.edit-teacher-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTeacherForm(parseInt(b.dataset.id));}));
+    c.querySelectorAll('.delete-teacher-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();if(confirm('Delete?')){teachers=teachers.filter(t=>t.id!==parseInt(b.dataset.id));if(currentTeacherCardId===parseInt(b.dataset.id))currentTeacherCardId=null;saveTeachers();clearTeacherCard();}}));
+}
+function openTeacherForm(id=null){
+    document.getElementById('teacherFormDiv').style.display='block';
+    if(!id){currentTeacherEditId=null;document.getElementById('teacherFormTitle').innerText='Add Teacher';['teacherName','teacherFatherName','teacherMobile','teacherDob','teacherDesignation','teacherAddress'].forEach(x=>document.getElementById(x).value='');document.getElementById('teacherPhotoFile').value='';}
+    else{const t=teachers.find(t=>t.id===id);if(!t)return;currentTeacherEditId=id;document.getElementById('teacherFormTitle').innerText='Edit Teacher';document.getElementById('teacherName').value=t.name||'';document.getElementById('teacherFatherName').value=t.fatherName||'';document.getElementById('teacherMobile').value=t.mobile||'';document.getElementById('teacherDob').value=t.dob||'';document.getElementById('teacherDesignation').value=t.designation||'';document.getElementById('teacherAddress').value=t.address||'';}
+}
+let currentTeacherEditId=null;
+async function saveTeacherForm(){
+    const name=document.getElementById('teacherName').value.trim(),father=document.getElementById('teacherFatherName').value.trim(),mobile=document.getElementById('teacherMobile').value.trim(),dob=document.getElementById('teacherDob').value.trim(),desig=document.getElementById('teacherDesignation').value.trim(),addr=document.getElementById('teacherAddress').value.trim();
+    if(!name||!mobile||!dob){alert('Name, Mobile, DOB required');return;}
+    const file=document.getElementById('teacherPhotoFile').files[0];
+    try{var photo=await fileToBase64(file,60);}catch(e){alert(e);return;}
+    if(currentTeacherEditId===null){teachers.push({id:Date.now(),name,fatherName:father,mobile,dob,designation:desig,address:addr,photo,positions:{}});}
+    else{const idx=teachers.findIndex(t=>t.id===currentTeacherEditId);if(idx!==-1)teachers[idx]={...teachers[idx],name,fatherName:father,mobile,dob,designation:desig,address:addr,photo:photo||teachers[idx].photo};}
+    saveTeachers();document.getElementById('teacherFormDiv').style.display='none';currentTeacherEditId=null;
+}
+function cancelTeacherForm(){document.getElementById('teacherFormDiv').style.display='none';currentTeacherEditId=null;}
+function filterTeacherList(){const inp=document.getElementById('teacherSearch');if(inp)teacherSearchTerm=inp.value;renderTeacherList();}
+
+// ---------- TEACHER CARD ----------
+let teacherLocked=false;
+function clearTeacherCard(){if(!document.getElementById('teacherCard'))return;document.getElementById('tPhotoPreview').src='';document.getElementById('tShowName').innerText='TEACHER NAME';['tShowDesignation','tShowFather','tShowMobile','tShowDob','tShowAddress'].forEach(x=>document.getElementById(x).innerText='');applyTeacherGlobal();}
+function loadTeacherToCard(id){
+    const t=teachers.find(t=>t.id===id);if(!t||!document.getElementById('teacherCard'))return;
+    document.getElementById('tPhotoPreview').src=t.photo||'';document.getElementById('tShowName').innerText=t.name||'TEACHER NAME';document.getElementById('tShowDesignation').innerText=t.designation||'';document.getElementById('tShowFather').innerText=t.fatherName||'';document.getElementById('tShowMobile').innerText=t.mobile||'';document.getElementById('tShowDob').innerText=t.dob||'';document.getElementById('tShowAddress').innerText=t.address||'';
+    applyTeacherGlobal();
+    if(t.positions)document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const id=el.getAttribute('data-id');if(id&&t.positions[id]){el.style.left=t.positions[id].left;el.style.top=t.positions[id].top;}});
+}
+function resetTeacherPos(){if(teacherLocked){alert('Unlock first');return;}document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const l=el.getAttribute('data-original-left');const t=el.getAttribute('data-original-top');if(l&&t){el.style.left=l+'px';el.style.top=t+'px';}});saveTeacherPositions();}
+function toggleTeacherLock(){teacherLocked=!teacherLocked;document.getElementById('teacherLockBtn').innerText=teacherLocked?'🔒 Locked':'🔓 Unlock';}
+function downloadTeacherCard(){html2canvas(document.getElementById('teacherCard'),{scale:8,backgroundColor:'#ffffff'}).then(c=>c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(document.getElementById('tShowName').innerText||'teacher')+'_ID_Card.png';a.click();}));}
+let teacherDrag=null,tOffX=0,tOffY=0;
+function tStart(e){if(teacherLocked)return;teacherDrag=e.currentTarget;const r=teacherDrag.getBoundingClientRect(),cr=document.getElementById('teacherCard').getBoundingClientRect();tOffX=e.clientX-r.left;tOffY=e.clientY-r.top;teacherDrag.classList.add('dragging');e.preventDefault();}
+function tMove(e){if(!teacherDrag)return;const cr=document.getElementById('teacherCard').getBoundingClientRect(),er=teacherDrag.getBoundingClientRect();let l=e.clientX-cr.left-tOffX,t=e.clientY-cr.top-tOffY;l=Math.min(Math.max(l,0),cr.width-er.width);t=Math.min(Math.max(t,0),cr.height-er.height);teacherDrag.style.left=l+'px';teacherDrag.style.top=t+'px';}
+function tEnd(){if(teacherDrag){teacherDrag.classList.remove('dragging');saveTeacherPositions();teacherDrag=null;}}
+function saveTeacherPositions(){if(!currentTeacherCardId)return;const t=teachers.find(t=>t.id===currentTeacherCardId);if(t){const pos={};document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const id=el.getAttribute('data-id');if(id)pos[id]={left:el.style.left,top:el.style.top};});t.positions=pos;saveTeachers();}}
+function attachTeacherDrag(){document.querySelectorAll('#teacherCard .draggable').forEach(el=>{el.removeEventListener('mousedown',tStart);el.addEventListener('mousedown',tStart);});}
+
+document.addEventListener('mousemove',e=>{sMove(e);tMove(e);});
+document.addEventListener('mouseup',()=>{sEnd();tEnd();});
+
+// ---------- RENDER MODES ----------
+function renderStudentMode(){
+    return `<div class="management-panel"><h2>📚 Student Management</h2>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <select id="adminStudentClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;" onchange="filterAdminStudentByClass()">
+        <option value="">All Classes</option>
+        <option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+      </select>
+    </div>
+    <input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()"><div id="studentList" class="list-container"></div><button class="add-btn" id="addStudentBtn">+ Add New Student</button><div id="studentFormDiv" class="data-form" style="display:none;"><h3 id="formTitle">Add Student</h3><label>Name</label><input id="studentName"><label>Class</label><select id="studentClass"><option value="">--Select--</option><option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select><label>Roll</label><input id="studentRoll"><label>DOB</label><input id="studentDob" placeholder="DD/MM/YYYY"><label>Father</label><input id="studentFather"><label>Contact</label><input id="studentContact"><label>Address</label><input id="studentAddress"><label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div></div></div>
+    <div class="card-area"><h3>🪪 Student ID Card</h3><div id="studentCard"><img id="bgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div><div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div><div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"></div><div class="card-buttons"><button id="downloadBtn">⬇️ Download</button><button id="lockBtn">🔓 Unlock</button><button id="resetBtn">⟳ Reset Positions</button></div></div>`;
+}
+function renderTeacherMode(){
+    return `<div class="management-panel"><h2>👩‍🏫 Teacher Management</h2><input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()"><div id="teacherList" class="list-container"></div><button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button><div id="teacherFormDiv" class="data-form" style="display:none;"><h3 id="teacherFormTitle">Add Teacher</h3><label>Name</label><input id="teacherName"><label>Father</label><input id="teacherFatherName"><label>Mobile</label><input id="teacherMobile"><label>DOB</label><input id="teacherDob" placeholder="DD/MM/YYYY"><label>Designation</label><input id="teacherDesignation"><label>Address</label><input id="teacherAddress"><label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div></div></div>
+    <div class="card-area"><h3>🪪 Teacher ID Card</h3><div id="teacherCard"><img id="teacherBgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div><div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"></div><div class="card-buttons"><button id="teacherDownloadBtn">⬇️ Download</button><button id="teacherLockBtn">🔓 Unlock</button><button id="teacherResetBtn">⟳ Reset Positions</button></div></div>`;
+}
+
+// ---------- ADMIN STATS ----------
+function updateAdminStats(){
+    document.getElementById('totalStudents').textContent = students.length;
+    document.getElementById('totalTeachers').textContent = teachers.length;
+}
+
+// ---------- ADMIN MODE SWITCH ----------
+let currentAdminMode='student';
+function switchAdminMode(mode){
+    currentAdminMode=mode;
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(`mode-${mode}`)?.classList.add('active');
+    const c=document.getElementById('mainContainer');
+    if(mode==='student'){
+        c.innerHTML=renderStudentMode();
+        document.getElementById('addStudentBtn').onclick=()=>openStudentForm(null);
+        document.getElementById('saveStudentBtn').onclick=saveStudentForm;
+        document.getElementById('cancelStudentBtn').onclick=cancelStudentForm;
+        document.getElementById('downloadBtn').onclick=downloadStudentCard;
+        document.getElementById('lockBtn').onclick=toggleStudentLock;
+        document.getElementById('resetBtn').onclick=resetStudentPos;
+        document.getElementById('globalBgUpload').onchange=e=>handleStudentBg(e.target.files[0]);
+        document.getElementById('globalSigUpload').onchange=e=>handleStudentSig(e.target.files[0]);
+        renderStudentList();
+        if(students.length&&!currentStudentId)currentStudentId=students[0].id;
+        currentStudentId?loadStudentToCard(currentStudentId):clearStudentCard();
+        attachStudentDrag();
+    }else{
+        c.innerHTML=renderTeacherMode();
+        document.getElementById('addTeacherBtn').onclick=()=>openTeacherForm(null);
+        document.getElementById('saveTeacherBtn').onclick=saveTeacherForm;
+        document.getElementById('cancelTeacherBtn').onclick=cancelTeacherForm;
+        document.getElementById('teacherDownloadBtn').onclick=downloadTeacherCard;
+        document.getElementById('teacherLockBtn').onclick=toggleTeacherLock;
+        document.getElementById('teacherResetBtn').onclick=resetTeacherPos;
+        document.getElementById('teacherBgUpload').onchange=e=>handleTeacherBg(e.target.files[0]);
+        document.getElementById('teacherSigUpload').onchange=e=>handleTeacherSig(e.target.files[0]);
+        renderTeacherList();
+        if(teachers.length&&!currentTeacherCardId)currentTeacherCardId=teachers[0].id;
+        currentTeacherCardId?loadTeacherToCard(currentTeacherCardId):clearTeacherCard();
+        attachTeacherDrag();
+    }
+}
+function renderModeToggle(){
+    return `<button class="mode-btn active" id="mode-student" onclick="switchAdminMode('student')">📚 Student Mode</button><button class="mode-btn" id="mode-teacher" onclick="switchAdminMode('teacher')">👩‍🏫 Teacher Mode</button>`;
+}
+
+// ---------- TEACHER LOGIN (STUDENT MANAGEMENT) ----------
+function renderTeacherOnlyMgmt(){
+    return `<div class="management-panel" style="width:500px;max-width:100%;margin:0 auto;">
+    <h2>👩‍🏫 Manage Students</h2>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <select id="teacherClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;" onchange="filterByClass()">
+        <option value="">All Classes</option>
+        <option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+      </select>
+    </div>
+    <input id="studentSearchTeacher" class="search-box" placeholder="🔍 Search by name..." oninput="filterTStudList()">
+    <div id="teacherStudentList" class="list-container"></div>
+    <button class="add-btn" id="teacherAddStudentBtn">+ Add New Student</button>
+    <div id="teacherStudentFormDiv" class="data-form" style="display:none;">
+      <h3 id="tFormTitle">Add Student</h3>
+      <label>Name</label><input id="tStudName">
+      <label>Class</label><select id="tStudClass"><option value="">--Select--</option>
+        <option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+      </select>
+      <label>Roll</label><input id="tStudRoll">
+      <label>DOB</label><input id="tStudDob" placeholder="DD/MM/YYYY">
+      <label>Father</label><input id="tStudFather">
+      <label>Contact</label><input id="tStudContact">
+      <label>Address</label><input id="tStudAddress">
+      <label>Photo (max 60KB)</label><input type="file" id="tStudPhoto" accept="image/*">
+      <div class="form-buttons"><button id="tSaveStudent">Save</button><button id="tCancelStudent" class="cancel-btn">Cancel</button></div>
+    </div>
+  </div>`;
+}
+let tStudSearch='',tStudEditId=null,teacherSelectedClass='';
+function filterByClass(){teacherSelectedClass=document.getElementById('teacherClassFilter')?.value||'';filterTStudList();}
+function renderTStudList(){
+    const c=document.getElementById('teacherStudentList');if(!c)return;
+    const filtered=students.filter(s=>{const nameMatch=s.name.toLowerCase().includes(tStudSearch.toLowerCase())||(s.class&&s.class.toLowerCase().includes(tStudSearch.toLowerCase()));const classMatch=teacherSelectedClass===''||s.class===teacherSelectedClass;return nameMatch&&classMatch;});
+    if(!filtered.length){c.innerHTML='<div style="padding:15px;">No students.</div>';return;}
+    c.innerHTML=filtered.map(s=>`<div class="list-item"><span class="item-name">${escapeHtml(s.name)} (${s.class||''})</span><div class="item-actions"><button class="view-btn" data-id="${s.id}">👁️ View</button><button class="edit-btn" data-id="${s.id}">✏️ Edit</button></div></div>`).join('');
+    c.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();viewStudentInfo(parseInt(b.dataset.id));}));
+    c.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTStudForm(parseInt(b.dataset.id));}));
+}
+function openTStudForm(id=null){
+    document.getElementById('teacherStudentFormDiv').style.display='block';
+    if(!id){tStudEditId=null;document.getElementById('tFormTitle').innerText='Add Student';document.getElementById('tStudName').value='';document.getElementById('tStudClass').value=teacherSelectedClass||'';['tStudRoll','tStudDob','tStudFather','tStudContact','tStudAddress'].forEach(x=>document.getElementById(x).value='');}
+    else{const s=students.find(s=>s.id===id);if(!s)return;tStudEditId=id;document.getElementById('tFormTitle').innerText='Edit Student';document.getElementById('tStudName').value=s.name||'';document.getElementById('tStudClass').value=s.class||'';document.getElementById('tStudRoll').value=s.roll||'';document.getElementById('tStudDob').value=s.dob||'';document.getElementById('tStudFather').value=s.father||'';document.getElementById('tStudContact').value=s.contact||'';document.getElementById('tStudAddress').value=s.address||'';}
+}
+async function saveTStudForm(){
+    const name=document.getElementById('tStudName').value.trim();if(!name){alert('Name required');return;}
+    const data={name,class:document.getElementById('tStudClass').value,roll:document.getElementById('tStudRoll').value,dob:document.getElementById('tStudDob').value,father:document.getElementById('tStudFather').value,contact:document.getElementById('tStudContact').value,address:document.getElementById('tStudAddress').value};
+    const file=document.getElementById('tStudPhoto').files[0];
+    try{var photo=await fileToBase64(file,60);}catch(e){alert(e);return;}
+    if(tStudEditId===null){students.push({id:Date.now(),...data,mobile:data.contact,photoImage:photo,positions:{}});}
+    else{const idx=students.findIndex(s=>s.id===tStudEditId);if(idx!==-1)students[idx]={...students[idx],...data,photoImage:photo||students[idx].photoImage};}
+    saveStudents();document.getElementById('teacherStudentFormDiv').style.display='none';tStudEditId=null;filterTStudList();
+}
+function cancelTStudForm(){document.getElementById('teacherStudentFormDiv').style.display='none';tStudEditId=null;}
+function filterTStudList(){renderTStudList();}
+function initTeacherUI(){
+    document.getElementById('mainContainer').innerHTML=renderTeacherOnlyMgmt();
+    document.getElementById('teacherAddStudentBtn').onclick=()=>openTStudForm(null);
+    document.getElementById('tSaveStudent').onclick=saveTStudForm;
+    document.getElementById('tCancelStudent').onclick=cancelTStudForm;
+    teacherSelectedClass='';
+    filterTStudList();
+}
+
+// ---------- VIEW STUDENT INFO (popup without card) ----------
+function viewStudentInfo(id){
+    const s=students.find(s=>s.id===id);if(!s)return;
+    const modal=document.getElementById('studentViewModal');
+    const content=document.getElementById('studentViewContent');
+    content.innerHTML=`
+      <div style="text-align:center;">
+        <h3 style="color:#001B4E;">👤 Student Details</h3>
+        <div style="margin:15px auto; width:100px; height:100px; border-radius:50%; overflow:hidden; border:3px solid #001B4E;">
+          <img src="${s.photoImage||''}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+        </div>
+        <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+        <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+        <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+        <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+        <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+        <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+      </div>
+    `;
+    modal.style.display='flex';
+}
+function closeStudentView(){document.getElementById('studentViewModal').style.display='none';}
+
+// ---------- BACKUP ----------
+function exportAllData(){
+    const backup={students,teachers,globalBgImage,globalSignatureImage,globalTeacherBgImage,globalTeacherSignatureImage};
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='id_card_backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+function importBackup(file){
+    const reader=new FileReader();
+    reader.onload=function(e){
+        try{
+            const data=JSON.parse(e.target.result);
+            if(data.students&&data.teachers){
+                students=data.students;teachers=data.teachers;
+                globalBgImage=data.globalBgImage||'';
+                globalSignatureImage=data.globalSignatureImage||'';
+                globalTeacherBgImage=data.globalTeacherBgImage||'';
+                globalTeacherSignatureImage=data.globalTeacherSignatureImage||'';
+                localStorage.setItem('idCardStudents',JSON.stringify(students));
+                localStorage.setItem('idCardTeachers',JSON.stringify(teachers));
+                localStorage.setItem('globalBgImage',globalBgImage);
+                localStorage.setItem('globalSignatureImage',globalSignatureImage);
+                localStorage.setItem('globalTeacherBgImage',globalTeacherBgImage);
+                localStorage.setItem('globalTeacherSignatureImage',globalTeacherSignatureImage);
+                alert('Backup imported successfully! Reloading...');
+                location.reload();
+            }else alert('Invalid backup file.');
+        }catch(err){alert('Error reading backup: '+err);}
+    };
+    reader.readAsText(file);
+}
+
+// ---------- DYNAMIC TOP BAR ----------
+function updateTopBarTitle(){
+    const titleEl=document.getElementById('topBarTitle');
+    if(!titleEl||!currentUser)return;
+    let photoUrl='';
+    if(currentUser.role==='teacher'){
+        const t=teachers.find(t=>t.id===currentUser.id);
+        photoUrl=t?t.photo||'':'';
+        titleEl.innerHTML=`<img src="${photoUrl}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👩‍🏫 Welcome, ${currentUser.name}`;
+    }else if(currentUser.role==='student'){
+        const s=students.find(s=>s.id===currentUser.id);
+        photoUrl=s?s.photoImage||'':'';
+        titleEl.innerHTML=`<img src="${photoUrl}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👨‍🎓 Welcome, ${currentUser.name}`;
+    }else{
+        titleEl.innerHTML='📇 ID Card Management System';
+    }
+}
+
+// ---------- ROLE UI & LOGIN ----------
+function initRoleUI(){
+    const toggle=document.getElementById('modeToggle');
+    const backupPanel=document.getElementById('backupPanel');
+    const statsRow=document.getElementById('adminStatsRow');
+    if(currentUser.role==='student'){
+        toggle.innerHTML=''; backupPanel.style.display='none'; statsRow.style.display='none';
+        const s=students.find(s=>s.id===currentUser.id);
+        document.getElementById('mainContainer').innerHTML=s?`<div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;"><h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>${s.photoImage?`<img src="${s.photoImage}" class="profile-photo">`:'<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}<div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div><div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div><div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div><div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div><div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div><div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div></div>`:'<div class="profile-card">Student not found.</div>';
+    }else if(currentUser.role==='teacher'){
+        toggle.innerHTML=''; backupPanel.style.display='none'; statsRow.style.display='none';
+        initTeacherUI();
+    }else{
+        toggle.innerHTML=renderModeToggle();
+        backupPanel.style.display='block';
+        statsRow.style.display='flex';
+        updateAdminStats();
+        switchAdminMode('student');
+    }
+}
+
+function doLogin(){
+    const role=document.getElementById('loginRole').value;
+    const mobileOrUser=document.getElementById('loginMobile').value.trim();
+    const dobOrPass=document.getElementById('loginDob').value.trim();
+    const err=document.getElementById('loginError');
+    err.innerText='';
+    if(role==='student'){
+        const s=students.find(s=>s.mobile===mobileOrUser&&s.dob===dobOrPass);
+        if(s){currentUser={role:'student',id:s.id,name:s.name};showApp();}
+        else err.innerText='Invalid mobile or DOB';
+    }else if(role==='teacher'){
+        const t=teachers.find(t=>t.mobile===mobileOrUser&&t.dob===dobOrPass);
+        if(t){currentUser={role:'teacher',id:t.id,name:t.name};showApp();}
+        else err.innerText='Invalid teacher credentials';
+    }else if(role==='admin'){
+        if(mobileOrUser==='admin'&&dobOrPass==='admin123'){currentUser={role:'admin',name:'Admin'};showApp();}
+        else err.innerText='Invalid admin credentials';
+    }
+}
+function showApp(){
+    document.getElementById('loginContainer').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    updateTopBarTitle();
+    initRoleUI();
+}
+function logout(){
+    currentUser=null;
+    document.getElementById('mainApp').style.display='none';
+    document.getElementById('loginContainer').style.display='flex';
+    document.getElementById('loginMobile').value='';
+    document.getElementById('loginDob').value='';
+}
+
+// Bind backup & events
+document.getElementById('exportBackupBtn')?.addEventListener('click',exportAllData);
+document.getElementById('importBackupBtn')?.addEventListener('click',()=>document.getElementById('importBackupFile').click());
+document.getElementById('importBackupFile')?.addEventListener('change',(e)=>{if(e.target.files[0])importBackup(e.target.files[0]);});
+document.getElementById('loginBtn').addEventListener('click',doLogin);
+document.getElementById('logoutBtn').addEventListener('click',logout);
+
+document.getElementById('loginContainer').style.display='flex';
+document.getElementById('mainApp').style.display='none';
+</script>
+</body>
+</html>
