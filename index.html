@@ -151,6 +151,37 @@ let students = JSON.parse(localStorage.getItem('idCardStudents')) || [];
 let teachers = JSON.parse(localStorage.getItem('idCardTeachers')) || [];
 let currentUser = null;
 
+// Migrate existing DOB from DD/MM/YYYY to YYYY-MM-DD
+function migrateDob() {
+    const convert = (str) => {
+        if (!str || str.includes('-')) return str; // already YYYY-MM-DD or empty
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+        }
+        return str; // fallback
+    };
+    let changed = false;
+    students.forEach(s => {
+        if (s.dob && s.dob.includes('/')) {
+            s.dob = convert(s.dob);
+            changed = true;
+        }
+    });
+    teachers.forEach(t => {
+        if (t.dob && t.dob.includes('/')) {
+            t.dob = convert(t.dob);
+            changed = true;
+        }
+    });
+    if (changed) {
+        localStorage.setItem('idCardStudents', JSON.stringify(students));
+        localStorage.setItem('idCardTeachers', JSON.stringify(teachers));
+    }
+}
+migrateDob();
+
 let adminPassword = localStorage.getItem('adminPassword') || 'admin123';
 if (!localStorage.getItem('adminPassword')) localStorage.setItem('adminPassword', adminPassword);
 
@@ -160,12 +191,20 @@ let globalTeacherBgImage = localStorage.getItem('globalTeacherBgImage') || '';
 let globalTeacherSignatureImage = localStorage.getItem('globalTeacherSignatureImage') || '';
 
 if (!students.length) {
-    students.push({id:1001,name:"Rahul Sharma",mobile:"9876543210",dob:"01/01/2010",class:"5-A",roll:"23",father:"Mr. Suresh Sharma",contact:"9876543210",address:"12, Green Park, Delhi",photoImage:"",positions:{}});
-    localStorage.setItem('idCardStudents',JSON.stringify(students));
+    students.push({
+        id:1001, name:"Rahul Sharma", mobile:"9876543210", dob:"2010-01-01", // YYYY-MM-DD
+        class:"5-A", roll:"23", father:"Mr. Suresh Sharma", contact:"9876543210",
+        address:"12, Green Park, Delhi", photoImage:"", positions:{}
+    });
+    localStorage.setItem('idCardStudents', JSON.stringify(students));
 }
 if (!teachers.length) {
-    teachers.push({id:2001,name:"Mrs. Sunita Mehta",fatherName:"Mr. Ramesh Mehta",mobile:"9876543211",dob:"15/05/1985",designation:"Senior Teacher",address:"45, Teacher Colony, Delhi",photo:"",positions:{}});
-    localStorage.setItem('idCardTeachers',JSON.stringify(teachers));
+    teachers.push({
+        id:2001, name:"Mrs. Sunita Mehta", fatherName:"Mr. Ramesh Mehta",
+        mobile:"9876543211", dob:"1985-05-15", designation:"Senior Teacher",
+        address:"45, Teacher Colony, Delhi", photo:"", positions:{}
+    });
+    localStorage.setItem('idCardTeachers', JSON.stringify(teachers));
 }
 
 function fileToBase64(file, maxKB=60) {
@@ -180,7 +219,6 @@ function fileToBase64(file, maxKB=60) {
 }
 function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
-// Helper to generate class options string (used in multiple places)
 function getClassOptions() {
     let options = '<option value="">--Select--</option>';
     options += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
@@ -331,11 +369,11 @@ function renderStudentMode(){
         ${getClassFilterOptions()}
       </select>
     </div>
-    <input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()"><div id="studentList" class="list-container"></div><button class="add-btn" id="addStudentBtn">+ Add New Student</button><div id="studentFormDiv" class="data-form" style="display:none;"><h3 id="formTitle">Add Student</h3><label>Name</label><input id="studentName"><label>Class</label><select id="studentClass">${getClassOptions()}</select><label>Roll</label><input id="studentRoll"><label>DOB</label><input id="studentDob" placeholder="DD/MM/YYYY"><label>Father</label><input id="studentFather"><label>Contact</label><input id="studentContact"><label>Address</label><input id="studentAddress"><label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div></div></div>
+    <input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()"><div id="studentList" class="list-container"></div><button class="add-btn" id="addStudentBtn">+ Add New Student</button><div id="studentFormDiv" class="data-form" style="display:none;"><h3 id="formTitle">Add Student</h3><label>Name</label><input id="studentName"><label>Class</label><select id="studentClass">${getClassOptions()}</select><label>Roll</label><input id="studentRoll"><label>Date of Birth</label><input type="date" id="studentDob"><label>Father</label><input id="studentFather"><label>Contact</label><input id="studentContact"><label>Address</label><input id="studentAddress"><label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div></div></div>
     <div class="card-area"><h3>🪪 Student ID Card</h3><div id="studentCard"><img id="bgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div><div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div><div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"></div><div class="card-buttons"><button id="downloadBtn">⬇️ Download</button><button id="lockBtn">🔓 Unlock</button><button id="resetBtn">⟳ Reset Positions</button></div></div>`;
 }
 function renderTeacherMode(){
-    return `<div class="management-panel"><h2>👩‍🏫 Teacher Management</h2><input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()"><div id="teacherList" class="list-container"></div><button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button><div id="teacherFormDiv" class="data-form" style="display:none;"><h3 id="teacherFormTitle">Add Teacher</h3><label>Name</label><input id="teacherName"><label>Father</label><input id="teacherFatherName"><label>Mobile</label><input id="teacherMobile"><label>DOB</label><input id="teacherDob" placeholder="DD/MM/YYYY"><label>Designation</label><input id="teacherDesignation"><label>Address</label><input id="teacherAddress"><label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div></div></div>
+    return `<div class="management-panel"><h2>👩‍🏫 Teacher Management</h2><input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()"><div id="teacherList" class="list-container"></div><button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button><div id="teacherFormDiv" class="data-form" style="display:none;"><h3 id="teacherFormTitle">Add Teacher</h3><label>Name</label><input id="teacherName"><label>Father</label><input id="teacherFatherName"><label>Mobile</label><input id="teacherMobile"><label>Date of Birth</label><input type="date" id="teacherDob"><label>Designation</label><input id="teacherDesignation"><label>Address</label><input id="teacherAddress"><label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div></div></div>
     <div class="card-area"><h3>🪪 Teacher ID Card</h3><div id="teacherCard"><img id="teacherBgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div><div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"></div><div class="card-buttons"><button id="teacherDownloadBtn">⬇️ Download</button><button id="teacherLockBtn">🔓 Unlock</button><button id="teacherResetBtn">⟳ Reset Positions</button></div></div>`;
 }
 
@@ -403,7 +441,7 @@ function renderTeacherOnlyMgmt(){
       <label>Name</label><input id="tStudName">
       <label>Class</label><select id="tStudClass">${getClassOptions()}</select>
       <label>Roll</label><input id="tStudRoll">
-      <label>DOB</label><input id="tStudDob" placeholder="DD/MM/YYYY">
+      <label>Date of Birth</label><input type="date" id="tStudDob">
       <label>Father</label><input id="tStudFather">
       <label>Contact</label><input id="tStudContact">
       <label>Address</label><input id="tStudAddress">
@@ -424,7 +462,7 @@ function renderTStudList(){
 }
 function openTStudForm(id=null){
     document.getElementById('teacherStudentFormDiv').style.display='block';
-    if(!id){tStudEditId=null;document.getElementById('tFormTitle').innerText='Add Student';document.getElementById('tStudName').value='';document.getElementById('tStudClass').value=teacherSelectedClass||'';['tStudRoll','tStudDob','tStudFather','tStudContact','tStudAddress'].forEach(x=>document.getElementById(x).value='');}
+    if(!id){tStudEditId=null;document.getElementById('tFormTitle').innerText='Add Student';document.getElementById('tStudName').value='';document.getElementById('tStudClass').value=teacherSelectedClass||'';document.getElementById('tStudDob').value='';['tStudRoll','tStudFather','tStudContact','tStudAddress'].forEach(x=>document.getElementById(x).value='');}
     else{const s=students.find(s=>s.id===id);if(!s)return;tStudEditId=id;document.getElementById('tFormTitle').innerText='Edit Student';document.getElementById('tStudName').value=s.name||'';document.getElementById('tStudClass').value=s.class||'';document.getElementById('tStudRoll').value=s.roll||'';document.getElementById('tStudDob').value=s.dob||'';document.getElementById('tStudFather').value=s.father||'';document.getElementById('tStudContact').value=s.contact||'';document.getElementById('tStudAddress').value=s.address||'';}
 }
 async function saveTStudForm(){
@@ -476,6 +514,7 @@ function importBackup(file){
                 localStorage.setItem('idCardTeachers',JSON.stringify(teachers));
                 localStorage.setItem('globalBgImage',globalBgImage);localStorage.setItem('globalSignatureImage',globalSignatureImage);
                 localStorage.setItem('globalTeacherBgImage',globalTeacherBgImage);localStorage.setItem('globalTeacherSignatureImage',globalTeacherSignatureImage);
+                migrateDob(); // ensure imported data is also converted
                 alert('Backup imported successfully! Reloading...');location.reload();
             }else alert('Invalid backup file.');
         }catch(err){alert('Error reading backup: '+err);}
@@ -566,7 +605,23 @@ function logout(){
     document.getElementById('loginContainer').style.display='flex';
     document.getElementById('loginMobile').value='';
     document.getElementById('loginDob').value='';
+    // reset login DOB field to text because role is back to default
+    document.getElementById('loginDob').type = 'text';
+    document.getElementById('loginDob').placeholder = 'Date of Birth (DD/MM/YYYY) or Password (Admin)';
 }
+
+// Toggle login input type based on role
+document.getElementById('loginRole').addEventListener('change', function(e) {
+    const role = this.value;
+    const dobInput = document.getElementById('loginDob');
+    if (role === 'admin') {
+        dobInput.type = 'password';
+        dobInput.placeholder = 'Password';
+    } else {
+        dobInput.type = 'date';
+        dobInput.placeholder = '';
+    }
+});
 
 // Bind events
 document.getElementById('exportBackupBtn')?.addEventListener('click',exportAllData);
