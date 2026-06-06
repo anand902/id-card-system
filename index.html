@@ -496,7 +496,6 @@ function closeStudentView(){document.getElementById('studentViewModal').style.di
 
 // ---------- BACKUP (GLOBAL IMAGES EXCLUDED) ----------
 function exportAllData(){
-    // Export only students and teachers, no global images
     const backup = { students, teachers };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -514,10 +513,9 @@ function importBackup(file){
             if(data.students && data.teachers){
                 students = data.students;
                 teachers = data.teachers;
-                // Global images remain as they were before import (not overwritten)
                 localStorage.setItem('idCardStudents', JSON.stringify(students));
                 localStorage.setItem('idCardTeachers', JSON.stringify(teachers));
-                migrateDob(); // ensure imported data is also converted
+                migrateDob();
                 alert('Backup imported successfully! Reloading...');
                 location.reload();
             } else {
@@ -582,25 +580,54 @@ function initRoleUI(){
     }
 }
 
+// --- UPDATED doLogin with flexible date comparison ---
 function doLogin(){
-    const role=document.getElementById('loginRole').value;
-    const mobileOrUser=document.getElementById('loginMobile').value.trim();
-    const dobOrPass=document.getElementById('loginDob').value.trim();
-    const err=document.getElementById('loginError');
-    err.innerText='';
-    if(role==='student'){
-        const s=students.find(s=>s.mobile===mobileOrUser&&s.dob===dobOrPass);
-        if(s){currentUser={role:'student',id:s.id,name:s.name};showApp();}
-        else err.innerText='Invalid mobile or DOB';
-    }else if(role==='teacher'){
-        const t=teachers.find(t=>t.mobile===mobileOrUser&&t.dob===dobOrPass);
-        if(t){currentUser={role:'teacher',id:t.id,name:t.name};showApp();}
-        else err.innerText='Invalid teacher credentials';
-    }else if(role==='admin'){
-        if(mobileOrUser==='admin'&&dobOrPass===adminPassword){currentUser={role:'admin',name:'Admin'};showApp();}
-        else err.innerText='Invalid admin credentials';
+    const role = document.getElementById('loginRole').value;
+    const mobileOrUser = document.getElementById('loginMobile').value.trim();
+    const dobOrPass = document.getElementById('loginDob').value.trim();
+    const err = document.getElementById('loginError');
+    err.innerText = '';
+
+    // Convert any date string to YYYY-MM-DD
+    const normalizeDate = (str) => {
+        if (!str) return '';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; // already YYYY-MM-DD
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+        }
+        return str; // fallback
+    };
+
+    if (role === 'student') {
+        const inputDob = normalizeDate(dobOrPass);
+        const s = students.find(s => normalizeDate(s.dob) === inputDob && s.mobile === mobileOrUser);
+        if (s) {
+            currentUser = { role: 'student', id: s.id, name: s.name };
+            showApp();
+        } else {
+            err.innerText = 'Invalid mobile or DOB';
+        }
+    } else if (role === 'teacher') {
+        const inputDob = normalizeDate(dobOrPass);
+        const t = teachers.find(t => normalizeDate(t.dob) === inputDob && t.mobile === mobileOrUser);
+        if (t) {
+            currentUser = { role: 'teacher', id: t.id, name: t.name };
+            showApp();
+        } else {
+            err.innerText = 'Invalid teacher credentials';
+        }
+    } else if (role === 'admin') {
+        if (mobileOrUser === 'admin' && dobOrPass === adminPassword) {
+            currentUser = { role: 'admin', name: 'Admin' };
+            showApp();
+        } else {
+            err.innerText = 'Invalid admin credentials';
+        }
     }
 }
+
 function showApp(){
     document.getElementById('loginContainer').style.display='none';
     document.getElementById('mainApp').style.display='block';
