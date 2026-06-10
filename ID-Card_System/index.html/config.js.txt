@@ -1,5 +1,5 @@
 window.FIREBASE_CONFIG = {
-  apiKey: AIzaSyC74IUocux510KEoypM3jaTp9hpWjOzmko,
+  apiKey: "AIzaSyC74IUocux510KEoypM3jaTp9hpWjOzmko",
   authDomain: "id-card-system-9afbd.firebaseapp.com",
   projectId: "id-card-system-9afbd",
   storageBucket: "id-card-system-9afbd.firebasestorage.app",
