@@ -7,6 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SECURITY FIX: Load Firebase config from external file (DO NOT COMMIT config.js) -->
+    <script src="config.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
         body { background:#edf1f7; padding:20px; }
@@ -173,16 +175,13 @@
 </div>
 
 <script>
-// ---------- FIREBASE CONFIG ----------
-const firebaseConfig = {
-  apiKey: "AIzaSyAWOeimVt400vgGJJ9FkuGTPSG2WiUup1s",
-  authDomain: "id-card-system-9afbd.firebaseapp.com",
-  projectId: "id-card-system-9afbd",
-  storageBucket: "id-card-system-9afbd.firebasestorage.app",
-  messagingSenderId: "105103043325",
-  appId: "1:105103043325:web:f957a687573b8c8419ec94"
-};
-firebase.initializeApp(firebaseConfig);
+// ---------- FIREBASE CONFIG (loaded from external config.js) ----------
+if (typeof window.FIREBASE_CONFIG === 'undefined') {
+  console.error('ERROR: config.js not loaded. Please create config.js with your Firebase settings.');
+  alert('Configuration missing. Please create config.js (see instructions).');
+} else {
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+}
 const db = firebase.firestore();
 
 // ---------- GLOBAL DATA ----------
@@ -334,6 +333,50 @@ function saveTeacherPositions(){if(!currentTeacherCardId)return;const t=teachers
 
 document.addEventListener('mousemove',e=>{if(studentDrag)sMove(e);if(teacherDrag)tMove(e);});
 document.addEventListener('mouseup',()=>{sEnd();tEnd();});
+
+// --- DRAG FIX: attach mousedown listeners to draggable elements ---
+function attachStudentDragEvents() {
+  const card = document.getElementById('studentCard');
+  if(!card) return;
+  const draggables = card.querySelectorAll('.draggable');
+  draggables.forEach(el => {
+    // remove old to avoid duplicates
+    el.removeEventListener('mousedown', sStart);
+    el.addEventListener('mousedown', sStart);
+  });
+}
+function attachTeacherDragEvents() {
+  const card = document.getElementById('teacherCard');
+  if(!card) return;
+  const draggables = card.querySelectorAll('.draggable');
+  draggables.forEach(el => {
+    el.removeEventListener('mousedown', tStart);
+    el.addEventListener('mousedown', tStart);
+  });
+}
+// Override loadStudentToCard and loadTeacherToCard to reattach after positions applied
+const originalLoadStudent = loadStudentToCard;
+loadStudentToCard = function(id) {
+  originalLoadStudent(id);
+  attachStudentDragEvents();
+};
+const originalLoadTeacher = loadTeacherToCard;
+loadTeacherToCard = function(id) {
+  originalLoadTeacher(id);
+  attachTeacherDragEvents();
+};
+// Also attach after switching modes
+// Override clear functions too
+const originalClearStudent = clearStudentCard;
+clearStudentCard = function() {
+  originalClearStudent();
+  attachStudentDragEvents();
+};
+const originalClearTeacher = clearTeacherCard;
+clearTeacherCard = function() {
+  originalClearTeacher();
+  attachTeacherDragEvents();
+};
 
 // --- Teacher only student management ---
 let tStudSearch='',tStudEditId=null,teacherSelectedClass='';
@@ -557,6 +600,7 @@ function switchAdminMode(mode){
     renderStudentList();
     if(students.length && !students.find(s=>s.id===currentStudentId)) currentStudentId=students[0].id;
     currentStudentId?loadStudentToCard(currentStudentId):clearStudentCard();
+    attachStudentDragEvents();  // FIX: attach drag events after card is rendered
   }else{
     c.innerHTML=renderTeacherModeHTML();
     document.getElementById('addTeacherBtn').onclick=()=>openTeacherForm(null);
@@ -570,6 +614,7 @@ function switchAdminMode(mode){
     renderTeacherList();
     if(teachers.length && !teachers.find(t=>t.id===currentTeacherCardId)) currentTeacherCardId=teachers[0].id;
     currentTeacherCardId?loadTeacherToCard(currentTeacherCardId):clearTeacherCard();
+    attachTeacherDragEvents();  // FIX: attach drag events for teacher card
   }
 }
 function renderModeToggle(){ return `<button class="mode-btn active" id="mode-student" onclick="switchAdminMode('student')">📚 Student Mode</button><button class="mode-btn" id="mode-teacher" onclick="switchAdminMode('teacher')">👩‍🏫 Teacher Mode</button>`; }
