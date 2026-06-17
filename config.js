@@ -1,4 +1,4 @@
-window.FIREBASE_CONFIG = {
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCAQS7dpNt-On5yEFVWX9SoW5-XJRFujqs",
   authDomain: "id-card-system-9afbd.firebaseapp.com",
   databaseURL: "https://id-card-system-9afbd-default-rtdb.asia-southeast1.firebasedatabase.app",
