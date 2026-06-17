@@ -1,5 +1,5 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyC74IUocux510KEoypM3jaTp9hpWjOzmko",
+  apiKey: "AIzaSyDFdwenMglAb-_FFj9lKUA84-W9wsdSb2M",
   authDomain: "id-card-system-9afbd.firebaseapp.com",
   databaseURL: "https://id-card-system-9afbd-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "id-card-system-9afbd",
