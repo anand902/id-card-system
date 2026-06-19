@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ID Card System - Print Portal</title>
-  <!-- Firebase & html2canvas -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -25,6 +24,9 @@
     .top-bar h1 { color:#001B4E; font-size:1.5rem; display:flex; align-items:center; gap:10px; }
     .top-bar h1 img { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #001B4E; }
     .logout-btn { background:#dc3545; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
+
+    /* Connection status light */
+    #connectionStatus { display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle; transition: background 0.3s; }
 
     /* ===== BANNER ===== */
     .school-banner {
@@ -85,7 +87,6 @@
     .card-bg { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
     .photo-box { width:72px; height:90px; border-radius:10px; overflow:hidden; background:#eee; position:absolute; left:94px; top:132px; z-index:3; border:2px solid #E3A81C; cursor:move; }
     .photo-box img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
-    /* Shape classes (applied via JS) */
     .photo-shape-circle { clip-path:circle(50%); border-radius:0; }
     .photo-shape-hexagon { clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius:0; }
     .photo-shape-diamond { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius:0; }
@@ -173,6 +174,8 @@
     <h1 id="topBarTitle">📇 ID Card Management System</h1>
     <div>
       <button class="refresh-btn" id="refreshTopBtn" style="margin-right:10px;">🔄 Refresh</button>
+      <!-- Connection status light -->
+      <span id="connectionStatus" style="display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle;" title="Checking connection..."></span>
       <button class="logout-btn" id="logoutBtn">🚪 Logout</button>
     </div>
   </div>
@@ -264,6 +267,47 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ============================== CONNECTION STATUS ==============================
+let connectionCheckInterval;
+
+function checkConnection() {
+  const statusEl = document.getElementById('connectionStatus');
+  if (!statusEl) return;
+  statusEl.style.background = 'orange';
+  statusEl.title = 'Checking Firebase...';
+
+  const timeout = setTimeout(() => {
+    statusEl.style.background = 'red';
+    statusEl.title = 'Firebase connection timeout';
+  }, 5000);
+
+  db.collection('config').doc('images').get()
+    .then(() => {
+      clearTimeout(timeout);
+      statusEl.style.background = 'green';
+      statusEl.title = '✅ Connected to Firebase';
+    })
+    .catch((err) => {
+      clearTimeout(timeout);
+      statusEl.style.background = 'red';
+      statusEl.title = '❌ Disconnected: ' + err.message;
+    });
+}
+
+// Start checking connection
+document.addEventListener('DOMContentLoaded', function() {
+  checkConnection();
+  connectionCheckInterval = setInterval(checkConnection, 30000);
+  window.addEventListener('online', checkConnection);
+  window.addEventListener('offline', function() {
+    const statusEl = document.getElementById('connectionStatus');
+    if (statusEl) {
+      statusEl.style.background = 'red';
+      statusEl.title = 'Network is offline';
+    }
+  });
+});
+
 // ============================== GLOBAL VARIABLES ==============================
 let students = [], teachers = [], currentUser = null;
 let adminPassword = 'admin123';
@@ -294,27 +338,22 @@ function normalizeDateToYMD(str) {
   if (!str) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   const parts = str.split('/');
-  if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  if (parts.length === 3) {
+    if (parseInt(parts[0]) <= 31 && parseInt(parts[1]) <= 12 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    }
+    if (parseInt(parts[0]) <= 12 && parseInt(parts[1]) <= 31 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+    }
+  }
   return str;
 }
 
-// ============================== FIREBASE DATA LOAD & SAVE ==============================
-async function loadDataFromFirebase() {
+// ============================== ROLE-BASED DATA FETCH ==============================
+async function loadDataForRole(role) {
   showLoading(true);
   try {
-    // Fetch all collections in parallel
-    const [studSnap, teachSnap, configDoc, passDoc] = await Promise.all([
-      db.collection('students').get(),
-      db.collection('teachers').get(),
-      db.collection('config').doc('images').get(),
-      db.collection('config').doc('admin').get()
-    ]);
-
-    students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    teachers = teachSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    students.forEach(s => s._printSelected = false);
-
-    // Load global images & settings
+    const configDoc = await db.collection('config').doc('images').get();
     if (configDoc.exists) {
       const d = configDoc.data();
       globalBgImage = d.globalBgImage || '';
@@ -325,22 +364,37 @@ async function loadDataFromFirebase() {
       globalTextColor = d.globalTextColor || '#001B4E';
     }
 
-    // Load admin password – create document if missing
-    if (passDoc.exists) {
-      adminPassword = passDoc.data().password || 'admin123';
-    } else {
-      // Create the admin document with default password
-      await db.collection('config').doc('admin').set({ password: 'admin123' });
-      adminPassword = 'admin123';
+    if (role === 'admin') {
+      const [studSnap, teachSnap, passDoc] = await Promise.all([
+        db.collection('students').get(),
+        db.collection('teachers').get(),
+        db.collection('config').doc('admin').get()
+      ]);
+      students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      teachers = teachSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (passDoc.exists) {
+        adminPassword = passDoc.data().password || 'admin123';
+      } else {
+        await db.collection('config').doc('admin').set({ password: 'admin123' });
+        adminPassword = 'admin123';
+      }
+    } else if (role === 'teacher') {
+      const studSnap = await db.collection('students').get();
+      students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      teachers = [];
+    } else if (role === 'student') {
+      // Student loads only their own data later
     }
+    students.forEach(s => s._printSelected = false);
   } catch (e) {
-    console.error('Firebase load error:', e);
+    console.error('Data load error:', e);
     alert('Failed to load data: ' + e.message);
   } finally {
     showLoading(false);
   }
 }
 
+// ============================== SAVE FUNCTIONS ==============================
 async function saveGlobalImages() {
   await db.collection('config').doc('images').set({
     globalBgImage, globalSignatureImage, globalTeacherBgImage, globalTeacherSignatureImage,
@@ -373,6 +427,7 @@ async function deleteTeacherFromFB(id) {
   await db.collection('teachers').doc(id).delete();
 }
 
+// ============================== CLASS OPTIONS ==============================
 function getClassOptions() {
   let opts = '<option value="">--Select--</option>';
   opts += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
@@ -405,7 +460,7 @@ function updateTeacherStats(classFilter) {
   document.getElementById('teacherFemaleStudents').textContent = filtered.filter(s => s.gender === 'Female').length;
 }
 
-// ============================== DUPLICATE DETECTION & AUTO-DELETE ==============================
+// ============================== DUPLICATE FUNCTIONS ==============================
 function findDuplicates() {
   const map = {};
   students.forEach(s => {
@@ -495,7 +550,6 @@ async function autoDeleteDuplicates() {
     const deletions = [];
     keys.forEach(key => {
       const ids = dups[key].ids;
-      const keepId = ids[0];
       const deleteIds = ids.slice(1);
       deleteIds.forEach(id => {
         deletions.push(deleteStudentFromFB(id));
@@ -505,7 +559,6 @@ async function autoDeleteDuplicates() {
     });
     await Promise.all(deletions);
 
-    // Update selections
     if (currentStudentId && !students.some(s => s.id === currentStudentId)) {
       currentStudentId = students.length ? students[0].id : null;
     }
@@ -513,7 +566,6 @@ async function autoDeleteDuplicates() {
       currentTeacherCardId = teachers.length ? teachers[0].id : null;
     }
 
-    // Re-render UI
     if (currentUser && currentUser.role === 'admin') {
       if (currentAdminMode === 'student') {
         renderStudentList();
@@ -529,7 +581,6 @@ async function autoDeleteDuplicates() {
       filterTStudList();
       updateTeacherStats(teacherSelectedClass);
     }
-    // Refresh duplicate containers if visible
     const adminDup = document.getElementById('adminDuplicatesContainer');
     if (adminDup && adminDup.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
     const teacherDup = document.getElementById('teacherDuplicatesContainer');
@@ -803,11 +854,15 @@ let teacherSearchTerm = '', currentTeacherCardId = null;
 function renderTeacherList() {
   const c = document.getElementById('teacherList');
   if (!c) return;
-  const f = teachers.filter(t => t.name.toLowerCase().includes(teacherSearchTerm.toLowerCase()) || (t.mobile && t.mobile.includes(teacherSearchTerm)));
+  const f = teachers.filter(t => {
+    const nameMatch = t.name.toLowerCase().includes(teacherSearchTerm.toLowerCase());
+    const mobileMatch = t.mobile && t.mobile.includes(teacherSearchTerm);
+    return nameMatch || mobileMatch;
+  });
   if (!f.length) { c.innerHTML = '<div style="padding:15px;">No teachers.</div>'; return; }
   c.innerHTML = f.map(t => `
     <div class="list-item ${currentTeacherCardId === t.id ? 'selected' : ''}" data-id="${escapeHtml(t.id)}">
-      <span class="item-name">${escapeHtml(t.name)} (${escapeHtml(t.mobile)})</span>
+      <span class="item-name">${escapeHtml(t.name)} ${t.classTeacher ? '(' + escapeHtml(t.classTeacher) + ')' : ''}</span>
       <div class="item-actions">
         <button class="edit-teacher-btn" data-id="${escapeHtml(t.id)}">✏️</button>
         <button class="delete-teacher-btn" data-id="${escapeHtml(t.id)}">🗑️</button>
@@ -853,6 +908,7 @@ function openTeacherForm(id = null) {
     document.getElementById('teacherFormTitle').innerText = 'Add Teacher';
     ['teacherName', 'teacherFatherName', 'teacherMobile', 'teacherDob', 'teacherDesignation', 'teacherAddress']
       .forEach(x => document.getElementById(x).value = '');
+    document.getElementById('teacherClassTeacher').value = '';
     document.getElementById('teacherPhotoFile').value = '';
   } else {
     const t = teachers.find(t => t.id === id);
@@ -864,6 +920,7 @@ function openTeacherForm(id = null) {
     document.getElementById('teacherMobile').value = t.mobile || '';
     document.getElementById('teacherDob').value = t.dob || '';
     document.getElementById('teacherDesignation').value = t.designation || '';
+    document.getElementById('teacherClassTeacher').value = t.classTeacher || '';
     document.getElementById('teacherAddress').value = t.address || '';
   }
 }
@@ -878,6 +935,7 @@ async function saveTeacherForm() {
     mobile,
     dob,
     designation: document.getElementById('teacherDesignation').value.trim(),
+    classTeacher: document.getElementById('teacherClassTeacher').value,
     address: document.getElementById('teacherAddress').value.trim()
   };
   const file = document.getElementById('teacherPhotoFile').files[0];
@@ -1013,7 +1071,7 @@ function saveTeacherPositions() {
   }
 }
 
-// ============================== DRAG LISTENERS (attach after DOM) ==============================
+// ============================== DRAG LISTENERS ==============================
 function attachDragListeners() {
   const studentCard = document.getElementById('studentCard');
   const teacherCard = document.getElementById('teacherCard');
@@ -1034,11 +1092,10 @@ function teacherDragHandler(e) {
   const target = e.target.closest('.draggable');
   if (target) tStart(e, target);
 }
-// Global mouse move/up
 document.addEventListener('mousemove', e => { if (studentDrag) sMove(e); if (teacherDrag) tMove(e); });
 document.addEventListener('mouseup', () => { sEnd(); tEnd(); });
 
-// ============================== TEACHER STUDENT MANAGEMENT (for teacher role) ==============================
+// ============================== TEACHER STUDENT MANAGEMENT ==============================
 let tStudSearch = '', tStudEditId = null, teacherSelectedClass = '';
 function filterByClass() {
   teacherSelectedClass = document.getElementById('teacherClassFilter')?.value || '';
@@ -1078,6 +1135,7 @@ function openTStudForm(id = null) {
     document.getElementById('tStudDob').value = '';
     document.getElementById('tStudGender').value = '';
     ['tStudRoll', 'tStudFather', 'tStudContact', 'tStudAddress'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('tStudPhoto').value = '';
   } else {
     const s = students.find(s => s.id === id);
     if (!s) return;
@@ -1091,6 +1149,7 @@ function openTStudForm(id = null) {
     document.getElementById('tStudFather').value = s.father || '';
     document.getElementById('tStudContact').value = s.contact || '';
     document.getElementById('tStudAddress').value = s.address || '';
+    document.getElementById('tStudPhoto').value = '';
   }
 }
 async function saveTStudForm() {
@@ -1165,7 +1224,7 @@ async function initTeacherUI() {
         <label>Contact</label><input id="tStudContact">
         <label>Address</label><input id="tStudAddress">
         <label>Photo (max 60KB)</label><input type="file" id="tStudPhoto" accept="image/*">
-        <div class="form-buttons"><button id="tSaveStudent">Save</button><button id="tCancelStudent" class="cancel-btn">Cancel</button></div>
+        <div class="form-buttons"><button id="tSaveStudent">Upload to Server</button><button id="tCancelStudent" class="cancel-btn">Cancel</button></div>
       </div>
     </div>
   `;
@@ -1178,7 +1237,6 @@ async function initTeacherUI() {
   tStudSearch = '';
   filterTStudList();
   updateTeacherStats('');
-  // Apply shape & color after a short delay
   setTimeout(() => {
     const sel = document.querySelector('.photo-shape-select');
     if (sel) sel.value = photoShape;
@@ -1250,54 +1308,56 @@ function closeStudentView() { document.getElementById('studentViewModal').style.
 
 // ============================== REFRESH ==============================
 async function refreshData() {
-  await loadDataFromFirebase();
-  if (currentUser) {
-    if (currentUser.role === 'admin') {
-      updateAdminStats();
-      if (currentAdminMode === 'student') {
-        renderStudentList();
-        if (students.length && !students.find(s => s.id === currentStudentId)) currentStudentId = students[0]?.id || null;
-        currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
-      } else {
-        renderTeacherList();
-        if (teachers.length && !teachers.find(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers[0]?.id || null;
-        currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
-      }
-      document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
-      document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
-      attachDragListeners();
-      applyPhotoShapeToCards();
-      applyTextColorToCards();
-      const ad = document.getElementById('adminDuplicatesContainer');
-      if (ad && ad.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
-    } else if (currentUser.role === 'teacher') {
-      filterTStudList();
-      updateTeacherStats(teacherSelectedClass);
-      document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
-      document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
-      applyPhotoShapeToCards();
-      applyTextColorToCards();
-      const td = document.getElementById('teacherDuplicatesContainer');
-      if (td && td.style.display === 'block') renderDuplicates('teacherDuplicatesContainer');
-    } else if (currentUser.role === 'student') {
-      const s = students.find(s => s.id === currentUser.id);
-      if (s) {
-        document.getElementById('mainContainer').innerHTML = `
-          <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
-            <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
-            ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
-            <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
-            <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
-            <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
-            <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
-            <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
-            <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
-          </div>
-        `;
-      }
+  if (!currentUser) return;
+  await loadDataForRole(currentUser.role);
+  if (currentUser.role === 'admin') {
+    updateAdminStats();
+    if (currentAdminMode === 'student') {
+      renderStudentList();
+      if (students.length && !students.find(s => s.id === currentStudentId)) currentStudentId = students[0]?.id || null;
+      currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
+    } else {
+      renderTeacherList();
+      if (teachers.length && !teachers.find(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers[0]?.id || null;
+      currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
     }
-    updateTopBarTitle();
+    document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
+    document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
+    attachDragListeners();
+    applyPhotoShapeToCards();
+    applyTextColorToCards();
+    const ad = document.getElementById('adminDuplicatesContainer');
+    if (ad && ad.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
+  } else if (currentUser.role === 'teacher') {
+    filterTStudList();
+    updateTeacherStats(teacherSelectedClass);
+    document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
+    document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
+    applyPhotoShapeToCards();
+    applyTextColorToCards();
+    const td = document.getElementById('teacherDuplicatesContainer');
+    if (td && td.style.display === 'block') renderDuplicates('teacherDuplicatesContainer');
+  } else if (currentUser.role === 'student') {
+    const doc = await db.collection('students').doc(currentUser.id).get();
+    if (doc.exists) {
+      const s = doc.data();
+      document.getElementById('mainContainer').innerHTML = `
+        <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
+          <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
+          ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
+          <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+          <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+          <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+          <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+          <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+          <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+        </div>
+      `;
+    }
   }
+  updateTopBarTitle();
+  // Also re-check connection after refresh
+  checkConnection();
 }
 
 // ============================== SHAPE & COLOR CHANGE ==============================
@@ -1573,7 +1633,7 @@ function renderStudentModeHTML() {
         <label>Contact</label><input id="studentContact">
         <label>Address</label><input id="studentAddress">
         <label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*">
-        <div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div>
+        <div class="form-buttons"><button id="saveStudentBtn">Upload to Server</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div>
       </div>
     </div>
     <div class="card-area">
@@ -1628,9 +1688,11 @@ function renderTeacherModeHTML() {
         <label>Mobile</label><input id="teacherMobile">
         <label>Date of Birth</label><input type="date" id="teacherDob">
         <label>Designation</label><input id="teacherDesignation">
+        <label>Class Teacher of</label>
+        <select id="teacherClassTeacher">${getClassOptions()}</select>
         <label>Address</label><input id="teacherAddress">
         <label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*">
-        <div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div>
+        <div class="form-buttons"><button id="saveTeacherBtn">Upload to Server</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div>
       </div>
     </div>
     <div class="card-area">
@@ -1734,26 +1796,32 @@ function initRoleUI() {
     backupPanel.style.display = 'none';
     statsRow.style.display = 'none';
     banner.style.display = 'none';
-    const s = students.find(st => st.id === currentUser.id);
-    document.getElementById('mainContainer').innerHTML = s ? `
-      <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
-        <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
-        ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
-        <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
-        <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
-        <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
-        <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
-        <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
-        <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
-      </div>
-    ` : '<div class="profile-card">Student not found.</div>';
+    db.collection('students').doc(currentUser.id).get().then(doc => {
+      if (doc.exists) {
+        const s = doc.data();
+        document.getElementById('mainContainer').innerHTML = `
+          <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
+            <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
+            ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
+            <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+            <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+            <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+            <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+            <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+            <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+          </div>
+        `;
+      } else {
+        document.getElementById('mainContainer').innerHTML = '<div class="profile-card">Student not found.</div>';
+      }
+    }).catch(console.error);
   } else if (currentUser.role === 'teacher') {
     toggle.innerHTML = '';
     backupPanel.style.display = 'none';
     statsRow.style.display = 'none';
     banner.style.display = 'block';
     initTeacherUI();
-  } else { // admin
+  } else {
     toggle.innerHTML = renderModeToggle();
     backupPanel.style.display = 'block';
     statsRow.style.display = 'flex';
@@ -1764,46 +1832,84 @@ function initRoleUI() {
 }
 
 // ============================== LOGIN ==============================
-function doLogin() {
+async function doLogin() {
   const role = document.getElementById('loginRole').value;
   const mobileOrUser = document.getElementById('loginMobile').value.trim();
   const dobOrPass = document.getElementById('loginDob').value.trim();
   const err = document.getElementById('loginError');
   err.innerText = '';
 
-  if (role === 'student') {
-    const inputDob = normalizeDateToYMD(dobOrPass);
-    const s = students.find(st => normalizeDateToYMD(st.dob) === inputDob && st.mobile === mobileOrUser);
-    if (s) {
-      currentUser = { role: 'student', id: s.id, name: s.name };
-      showApp();
-    } else err.innerText = 'Invalid mobile or DOB';
-  } else if (role === 'teacher') {
-    let inputDob = dobOrPass;
-    if (inputDob.includes('/')) inputDob = normalizeDateToYMD(inputDob);
-    const t = teachers.find(tc => normalizeDateToYMD(tc.dob) === inputDob && tc.mobile === mobileOrUser);
-    if (t) {
-      currentUser = { role: 'teacher', id: t.id, name: t.name };
-      showApp();
-    } else err.innerText = 'Invalid teacher credentials';
-  } else if (role === 'admin') {
-    if (mobileOrUser === 'admin' && dobOrPass === adminPassword) {
-      currentUser = { role: 'admin', name: 'Admin' };
-      showApp();
-    } else err.innerText = 'Invalid admin credentials';
+  showLoading(true);
+  try {
+    if (role === 'student') {
+      const normalizedDob = normalizeDateToYMD(dobOrPass);
+      const snapshot = await db.collection('students')
+        .where('mobile', '==', mobileOrUser)
+        .where('dob', '==', normalizedDob)
+        .get();
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const s = { id: doc.id, ...doc.data() };
+        currentUser = { role: 'student', id: s.id, name: s.name };
+        await showApp();
+      } else {
+        err.innerText = 'Invalid mobile or DOB';
+      }
+    } 
+    else if (role === 'teacher') {
+      const normalizedDob = normalizeDateToYMD(dobOrPass);
+      const snapshot = await db.collection('teachers')
+        .where('mobile', '==', mobileOrUser)
+        .where('dob', '==', normalizedDob)
+        .get();
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const t = { id: doc.id, ...doc.data() };
+        currentUser = { role: 'teacher', id: t.id, name: t.name };
+        await showApp();
+      } else {
+        err.innerText = 'Invalid teacher credentials';
+      }
+    } 
+    else if (role === 'admin') {
+      const passDoc = await db.collection('config').doc('admin').get();
+      let storedPass = 'admin123';
+      if (passDoc.exists) {
+        storedPass = passDoc.data().password || 'admin123';
+      } else {
+        await db.collection('config').doc('admin').set({ password: 'admin123' });
+        storedPass = 'admin123';
+      }
+      if (mobileOrUser === 'admin' && dobOrPass === storedPass) {
+        currentUser = { role: 'admin', name: 'Admin' };
+        await showApp();
+      } else {
+        err.innerText = 'Invalid admin credentials';
+      }
+    }
+  } catch (e) {
+    console.error('Login error:', e);
+    err.innerText = 'Login error: ' + e.message;
+  } finally {
+    showLoading(false);
   }
 }
 
 async function showApp() {
   document.getElementById('loginContainer').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
-  await loadDataFromFirebase();
+  await loadDataForRole(currentUser.role);
   updateTopBarTitle();
   initRoleUI();
+  setTimeout(attachDragListeners, 200);
+  // Check connection after showing app
+  checkConnection();
 }
 
 function logout() {
   currentUser = null;
+  students = [];
+  teachers = [];
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('loginMobile').value = '';
@@ -1828,9 +1934,7 @@ function updateTopBarTitle() {
 }
 
 // ============================== INIT ==============================
-// Wait for DOM to load, then load data and show login
 (async function init() {
-  await loadDataFromFirebase();
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('mainApp').style.display = 'none';
 })();
@@ -1851,7 +1955,11 @@ document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('printPortalBtn')?.addEventListener('click', openPrintPortal);
 document.getElementById('downloadPrintSheetBtn')?.addEventListener('click', downloadPrintSheets);
 document.getElementById('refreshAdminBtn')?.addEventListener('click', refreshData);
-document.getElementById('refreshTopBtn')?.addEventListener('click', refreshData);
+document.getElementById('refreshTopBtn').addEventListener('click', function() {
+  refreshData();
+  // Also check connection manually
+  checkConnection();
+});
 </script>
 </body>
 </html>
