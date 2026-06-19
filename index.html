@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ID Card System - Print Portal</title>
+  <!-- Firebase & html2canvas -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
+    /* ===== RESET & GLOBAL ===== */
     * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
     body { background:#edf1f7; padding:20px; }
     .login-container { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:1000; }
@@ -17,45 +19,43 @@
     .login-box button { width:100%; padding:12px; background:#001B4E; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px; }
     .error-msg { color:red; margin-top:10px; font-size:13px; }
     .main-app { display:none; }
+
+    /* ===== TOP BAR ===== */
     .top-bar { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px 20px; border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
     .top-bar h1 { color:#001B4E; font-size:1.5rem; display:flex; align-items:center; gap:10px; }
     .top-bar h1 img { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #001B4E; }
     .logout-btn { background:#dc3545; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
 
+    /* ===== BANNER ===== */
     .school-banner {
-      background: #001B4E;
-      color: #FFD700;
-      padding: 12px 0;
-      overflow: hidden;
-      white-space: nowrap;
-      font-size: 3rem;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      border-radius: 40px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      display: none;
+      background:#001B4E; color:#FFD700; padding:12px 0; overflow:hidden; white-space:nowrap;
+      font-size:3rem; font-weight:bold; text-transform:uppercase; letter-spacing:2px;
+      border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      display:none;
     }
     .school-banner .marquee-track {
-      display: inline-block;
-      animation: marquee 25s linear infinite;
-      padding-left: 100%;
+      display:inline-block; animation:marquee 25s linear infinite; padding-left:100%;
     }
-    @keyframes marquee {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-100%); }
-    }
+    @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-100%); } }
 
+    /* ===== STATS ===== */
     .stats-row { display:flex; gap:20px; justify-content:center; margin-bottom:15px; flex-wrap:wrap; }
     .stat-circle { width:90px; height:90px; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.1); display:flex; flex-direction:column; align-items:center; justify-content:center; border:3px solid #001B4E; }
     .stat-circle .stat-number { font-size:24px; font-weight:bold; color:#001B4E; }
     .stat-circle .stat-label { font-size:11px; color:#555; margin-top:2px; }
     .stat-circle.male { border-color:#2196F3; }
     .stat-circle.female { border-color:#E91E63; }
+    .teacher-stats { display:flex; gap:15px; justify-content:center; margin-bottom:15px; flex-wrap:wrap; }
+    .teacher-stats .stat-circle { width:70px; height:70px; border-width:2px; }
+    .teacher-stats .stat-circle .stat-number { font-size:18px; }
+    .teacher-stats .stat-circle .stat-label { font-size:10px; }
+
+    /* ===== MODE TOGGLE ===== */
     .mode-toggle { display:flex; gap:10px; justify-content:center; margin-bottom:20px; }
     .mode-btn { padding:10px 25px; font-size:16px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; background:#ccc; color:#333; }
     .mode-btn.active { background:#001B4E; color:#fff; }
+
+    /* ===== LAYOUT ===== */
     .container { display:flex; gap:25px; flex-wrap:wrap; justify-content:center; }
     .management-panel { width:380px; background:#fff; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15); padding:20px; }
     .management-panel h2 { color:#001B4E; margin-bottom:15px; text-align:center; }
@@ -77,17 +77,21 @@
     .data-form button { margin-top:12px; padding:8px; background:#001B4E; color:#fff; border:none; border-radius:8px; cursor:pointer; }
     .form-buttons { display:flex; gap:10px; }
     .cancel-btn { background:#6c757d !important; }
+
+    /* ===== CARDS ===== */
     .card-area { background:#fff; border-radius:20px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15); display:flex; flex-direction:column; align-items:center; }
     .card-area h3 { color:#001B4E; margin-bottom:15px; }
     #studentCard, #teacherCard { position:relative; width:260px; height:410px; background:#fff; overflow:hidden; border-radius:14px; border:2px solid #001B4E; box-shadow:0 5px 15px rgba(0,0,0,0.2); }
     .card-bg { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
     .photo-box { width:72px; height:90px; border-radius:10px; overflow:hidden; background:#eee; position:absolute; left:94px; top:132px; z-index:3; border:2px solid #E3A81C; cursor:move; }
     .photo-box img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
-    .photo-shape-circle { clip-path: circle(50%); border-radius:0; }
-    .photo-shape-hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius:0; }
-    .photo-shape-diamond { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius:0; }
-    .photo-shape-pentagon { clip-path: polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%); border-radius:0; }
-    .photo-shape-rounded { clip-path: none; border-radius:10px; }
+    /* Shape classes (applied via JS) */
+    .photo-shape-circle { clip-path:circle(50%); border-radius:0; }
+    .photo-shape-hexagon { clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius:0; }
+    .photo-shape-diamond { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius:0; }
+    .photo-shape-pentagon { clip-path:polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%); border-radius:0; }
+    .photo-shape-rounded { clip-path:none; border-radius:10px; }
+
     .name-bar { width:170px; height:20px; background:linear-gradient(135deg,#001B4E,#0A2E73); border-radius:5px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10px; position:absolute; left:45px; top:235px; z-index:3; cursor:move; text-transform:uppercase; padding:0 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .info { width:220px; background:rgba(255,255,255,0.97); border:1.5px solid #D9A520; border-radius:8px; padding:5px; position:absolute; left:20px; top:265px; z-index:3; font-size:7px; cursor:move; }
     .row { display:flex; align-items:flex-start; padding:2px 0; }
@@ -109,33 +113,8 @@
     .global-uploads input { margin:5px; }
     .global-uploads select { padding:5px 10px; border-radius:8px; border:1px solid #ccc; font-size:12px; margin:5px; }
     .global-uploads input[type="color"] { width:50px; height:40px; padding:2px; border-radius:8px; border:1px solid #ccc; cursor:pointer; vertical-align:middle; margin:5px; }
-    .profile-photo { width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #001B4E; margin:0 auto 15px; display:block; }
-    .info-row { display:flex; padding:8px 0; border-bottom:1px solid #e2e8f0; }
-    .info-label { font-weight:bold; width:130px; color:#1e293b; }
-    .info-value { flex:1; color:#0f172a; }
-    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center; }
-    .modal-content { background:#fff; border-radius:20px; padding:20px; width:95vw; max-width:95vw; height:90vh; max-height:90vh; overflow-y:auto; position:relative; }
-    .modal-close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; color:#001B4E; }
-    .loading-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:3000; display:none; }
-    .loading-spinner { background:white; padding:20px; border-radius:10px; font-weight:bold; }
-    .print-sheet { display:block; background:white; margin:10px auto; border:1px solid #ccc; max-width:100%; height:auto; box-shadow:0 0 10px rgba(0,0,0,0.1); }
-    @media print { body * { visibility:hidden; } .print-sheet, .print-sheet * { visibility:visible; } .print-sheet { position:absolute; left:0; top:0; width:210mm; height:297mm; margin:0; border:none; box-shadow:none; } }
-    .refresh-btn {
-      background:#17a2b8;
-      color:#fff;
-      padding:8px 20px;
-      border:none;
-      border-radius:30px;
-      cursor:pointer;
-      font-weight:bold;
-      margin-left:10px;
-    }
-    .refresh-btn:hover { background:#138496; }
-    .teacher-stats { display:flex; gap:15px; justify-content:center; margin-bottom:15px; flex-wrap:wrap; }
-    .teacher-stats .stat-circle { width:70px; height:70px; border-width:2px; }
-    .teacher-stats .stat-circle .stat-number { font-size:18px; }
-    .teacher-stats .stat-circle .stat-label { font-size:10px; }
 
+    /* ===== DUPLICATES ===== */
     .duplicates-container { display:none; margin-bottom:10px; border:1px solid #dc3545; border-radius:8px; padding:10px; background:#fff5f5; }
     .duplicate-group { background:#f8f9fa; padding:8px; margin-bottom:5px; border-radius:5px; border-left:3px solid #dc3545; }
     .duplicate-group strong { color:#001B4E; }
@@ -144,26 +123,52 @@
     .btn-auto-delete { background:#dc3545; color:#fff; padding:8px 16px; border:none; border-radius:8px; cursor:pointer; margin-left:5px; }
     .btn-auto-delete:hover { background:#c82333; }
 
-    @media (max-width: 768px) {
-      .school-banner { font-size: 2rem; }
-    }
+    /* ===== MODALS ===== */
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center; }
+    .modal-content { background:#fff; border-radius:20px; padding:20px; width:95vw; max-width:95vw; height:90vh; max-height:90vh; overflow-y:auto; position:relative; }
+    .modal-close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; color:#001B4E; }
+    .loading-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:3000; display:none; }
+    .loading-spinner { background:white; padding:20px; border-radius:10px; font-weight:bold; }
+
+    /* ===== PRINT SHEET ===== */
+    .print-sheet { display:block; background:white; margin:10px auto; border:1px solid #ccc; max-width:100%; height:auto; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+    @media print { body * { visibility:hidden; } .print-sheet, .print-sheet * { visibility:visible; } .print-sheet { position:absolute; left:0; top:0; width:210mm; height:297mm; margin:0; border:none; box-shadow:none; } }
+
+    /* ===== MISC ===== */
+    .refresh-btn { background:#17a2b8; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer; font-weight:bold; margin-left:10px; }
+    .refresh-btn:hover { background:#138496; }
+    .profile-photo { width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid #001B4E; margin:0 auto 15px; display:block; }
+    .info-row { display:flex; padding:8px 0; border-bottom:1px solid #e2e8f0; }
+    .info-label { font-weight:bold; width:130px; color:#1e293b; }
+    .info-value { flex:1; color:#0f172a; }
+
+    @media (max-width:768px) { .school-banner { font-size:2rem; } }
   </style>
 </head>
 <body>
-<!-- Login -->
+
+<!-- ===== LOGIN ===== -->
 <div id="loginContainer" class="login-container">
   <div class="login-box">
     <h2>🔐 ID Card Login</h2>
-    <select id="loginRole"><option value="student">👨‍🎓 Student</option><option value="teacher">👩‍🏫 Teacher</option><option value="admin">⚙️ Admin</option></select>
+    <select id="loginRole">
+      <option value="student">👨‍🎓 Student</option>
+      <option value="teacher">👩‍🏫 Teacher</option>
+      <option value="admin">⚙️ Admin</option>
+    </select>
     <input type="text" id="loginMobile" placeholder="Mobile Number (Student/Teacher) or Username (Admin)">
     <input type="text" id="loginDob" placeholder="Date of Birth (DD/MM/YYYY) or Password (Admin)">
     <button id="loginBtn">Login</button>
     <div id="loginError" class="error-msg"></div>
   </div>
 </div>
+
+<!-- ===== LOADING OVERLAY ===== -->
 <div id="loadingOverlay" class="loading-overlay"><div class="loading-spinner">⏳ Loading...</div></div>
 
+<!-- ===== MAIN APP ===== -->
 <div id="mainApp" class="main-app">
+  <!-- Top Bar -->
   <div class="top-bar">
     <h1 id="topBarTitle">📇 ID Card Management System</h1>
     <div>
@@ -172,12 +177,14 @@
     </div>
   </div>
 
+  <!-- School Banner -->
   <div class="school-banner" id="schoolBanner">
     <span class="marquee-track">
       ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp; ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp; ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp;
     </span>
   </div>
 
+  <!-- Admin Backup Panel -->
   <div id="backupPanel" style="text-align:center; margin-bottom:15px; display:none;">
     <button id="exportBackupBtn" style="background:#007bff; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer;">📥 Export All Data</button>
     <button id="importBackupBtn" style="background:#28a745; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer; margin-left:10px;">📤 Import Backup</button>
@@ -186,17 +193,24 @@
     <button id="refreshAdminBtn" style="background:#17a2b8; color:#fff; padding:8px 20px; border:none; border-radius:30px; cursor:pointer; margin-left:10px;">🔄 Refresh Data</button>
     <input type="file" id="importBackupFile" accept=".json" style="display:none;">
   </div>
+
+  <!-- Admin Stats -->
   <div id="adminStatsRow" class="stats-row" style="display:none;">
     <div class="stat-circle"><span class="stat-number" id="totalStudents">0</span><span class="stat-label">Students</span></div>
     <div class="stat-circle male"><span class="stat-number" id="maleStudents">0</span><span class="stat-label">Male</span></div>
     <div class="stat-circle female"><span class="stat-number" id="femaleStudents">0</span><span class="stat-label">Female</span></div>
     <div class="stat-circle"><span class="stat-number" id="totalTeachers">0</span><span class="stat-label">Teachers</span></div>
   </div>
+
+  <!-- Mode Toggle -->
   <div id="modeToggle" class="mode-toggle"></div>
+
+  <!-- Main Content Container -->
   <div class="container" id="mainContainer"></div>
 </div>
 
-<!-- Modals -->
+<!-- ===== MODALS ===== -->
+<!-- Print Portal Modal -->
 <div id="printPortalModal" class="modal">
   <div class="modal-content">
     <span class="modal-close" onclick="closePrintPortal()">&times;</span>
@@ -215,12 +229,16 @@
     <div id="printSheetContainer" style="margin-top:20px; text-align:center;"></div>
   </div>
 </div>
+
+<!-- Student View Modal -->
 <div id="studentViewModal" class="modal">
   <div class="modal-content">
     <span class="modal-close" onclick="closeStudentView()">&times;</span>
     <div id="studentViewContent"></div>
   </div>
 </div>
+
+<!-- Change Password Modal -->
 <div id="changePasswordModal" class="modal">
   <div class="modal-content">
     <span class="modal-close" onclick="closeChangePassword()">&times;</span>
@@ -232,8 +250,9 @@
   </div>
 </div>
 
+<!-- ===== JAVASCRIPT ===== -->
 <script>
-// ============================== FIREBASE ==============================
+// ============================== FIREBASE CONFIG ==============================
 const firebaseConfig = {
   apiKey: "AIzaSyAWOeimVt400vgGJJ9FkuGTPSG2WiUup1s",
   authDomain: "id-card-system-9afbd.firebaseapp.com",
@@ -245,7 +264,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ============================== GLOBALS ==============================
+// ============================== GLOBAL VARIABLES ==============================
 let students = [], teachers = [], currentUser = null;
 let adminPassword = 'admin123';
 let globalBgImage = '', globalSignatureImage = '';
@@ -253,18 +272,24 @@ let globalTeacherBgImage = '', globalTeacherSignatureImage = '';
 let photoShape = 'rounded';
 let globalTextColor = '#001B4E';
 
-function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
-function fileToBase64(file, maxKB=2000) {
+// ============================== HELPER FUNCTIONS ==============================
+function showLoading(show) {
+  document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+function fileToBase64(file, maxKB = 2000) {
   return new Promise((resolve, reject) => {
     if (!file) { resolve(null); return; }
     if (file.size > maxKB * 1024) reject(`File exceeds ${maxKB} KB`);
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
-    r.onerror = () => reject("Read error");
-    r.readAsDataURL(file);
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject("Read error");
+    reader.readAsDataURL(file);
   });
 }
-function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+}
 function normalizeDateToYMD(str) {
   if (!str) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
@@ -273,19 +298,23 @@ function normalizeDateToYMD(str) {
   return str;
 }
 
-// ============================== FIREBASE DATA ==============================
+// ============================== FIREBASE DATA LOAD & SAVE ==============================
 async function loadDataFromFirebase() {
   showLoading(true);
   try {
+    // Fetch all collections in parallel
     const [studSnap, teachSnap, configDoc, passDoc] = await Promise.all([
       db.collection('students').get(),
       db.collection('teachers').get(),
       db.collection('config').doc('images').get(),
       db.collection('config').doc('admin').get()
     ]);
+
     students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     teachers = teachSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     students.forEach(s => s._printSelected = false);
+
+    // Load global images & settings
     if (configDoc.exists) {
       const d = configDoc.data();
       globalBgImage = d.globalBgImage || '';
@@ -295,40 +324,69 @@ async function loadDataFromFirebase() {
       photoShape = d.photoShape || 'rounded';
       globalTextColor = d.globalTextColor || '#001B4E';
     }
-    if (passDoc.exists) adminPassword = passDoc.data().password || 'admin123';
-  } catch (e) { console.error(e); alert('Failed to load data'); }
-  finally { showLoading(false); }
+
+    // Load admin password – create document if missing
+    if (passDoc.exists) {
+      adminPassword = passDoc.data().password || 'admin123';
+    } else {
+      // Create the admin document with default password
+      await db.collection('config').doc('admin').set({ password: 'admin123' });
+      adminPassword = 'admin123';
+    }
+  } catch (e) {
+    console.error('Firebase load error:', e);
+    alert('Failed to load data: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
 }
 
 async function saveGlobalImages() {
-  await db.collection('config').doc('images').set({ 
-    globalBgImage, globalSignatureImage, globalTeacherBgImage, globalTeacherSignatureImage, photoShape, globalTextColor
+  await db.collection('config').doc('images').set({
+    globalBgImage, globalSignatureImage, globalTeacherBgImage, globalTeacherSignatureImage,
+    photoShape, globalTextColor
   }).catch(console.error);
 }
 async function saveAdminPassword() {
   await db.collection('config').doc('admin').set({ password: adminPassword }).catch(console.error);
 }
-async function addStudentToFB(s) { const docRef = await db.collection('students').add(s); s.id = docRef.id; return s; }
-async function updateStudentInFB(s) { await db.collection('students').doc(s.id).set(s); }
-async function deleteStudentFromFB(id) { await db.collection('students').doc(id).delete(); }
-async function addTeacherToFB(t) { const docRef = await db.collection('teachers').add(t); t.id = docRef.id; return t; }
-async function updateTeacherInFB(t) { await db.collection('teachers').doc(t.id).set(t); }
-async function deleteTeacherFromFB(id) { await db.collection('teachers').doc(id).delete(); }
+async function addStudentToFB(s) {
+  const docRef = await db.collection('students').add(s);
+  s.id = docRef.id;
+  return s;
+}
+async function updateStudentInFB(s) {
+  await db.collection('students').doc(s.id).set(s);
+}
+async function deleteStudentFromFB(id) {
+  await db.collection('students').doc(id).delete();
+}
+async function addTeacherToFB(t) {
+  const docRef = await db.collection('teachers').add(t);
+  t.id = docRef.id;
+  return t;
+}
+async function updateTeacherInFB(t) {
+  await db.collection('teachers').doc(t.id).set(t);
+}
+async function deleteTeacherFromFB(id) {
+  await db.collection('teachers').doc(id).delete();
+}
 
 function getClassOptions() {
-  let options = '<option value="">--Select--</option>';
-  options += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
-  for (let i=1;i<=10;i++) options += `<option>${i}-A</option><option>${i}-B</option>`;
-  return options;
+  let opts = '<option value="">--Select--</option>';
+  opts += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
+  for (let i = 1; i <= 10; i++) opts += `<option>${i}-A</option><option>${i}-B</option>`;
+  return opts;
 }
 function getClassFilterOptions() {
-  let options = '<option value="">All Classes</option>';
-  options += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
-  for (let i=1;i<=10;i++) options += `<option>${i}-A</option><option>${i}-B</option>`;
-  return options;
+  let opts = '<option value="">All Classes</option>';
+  opts += '<option>LKG-A</option><option>LKG-B</option><option>UKG-A</option><option>UKG-B</option>';
+  for (let i = 1; i <= 10; i++) opts += `<option>${i}-A</option><option>${i}-B</option>`;
+  return opts;
 }
 
-// ============================== STATS UPDATES ==============================
+// ============================== STATS ==============================
 function updateAdminStats() {
   document.getElementById('totalStudents').textContent = students.length;
   document.getElementById('totalTeachers').textContent = teachers.length;
@@ -337,21 +395,17 @@ function updateAdminStats() {
   document.getElementById('maleStudents').textContent = males;
   document.getElementById('femaleStudents').textContent = females;
 }
-
 function updateTeacherStats(classFilter) {
   let filtered = students;
   if (classFilter && classFilter !== '') {
     filtered = students.filter(s => s.class === classFilter);
   }
-  const total = filtered.length;
-  const males = filtered.filter(s => s.gender === 'Male').length;
-  const females = filtered.filter(s => s.gender === 'Female').length;
-  document.getElementById('teacherTotalStudents').textContent = total;
-  document.getElementById('teacherMaleStudents').textContent = males;
-  document.getElementById('teacherFemaleStudents').textContent = females;
+  document.getElementById('teacherTotalStudents').textContent = filtered.length;
+  document.getElementById('teacherMaleStudents').textContent = filtered.filter(s => s.gender === 'Male').length;
+  document.getElementById('teacherFemaleStudents').textContent = filtered.filter(s => s.gender === 'Female').length;
 }
 
-// ============================== DUPLICATE DETECTION ==============================
+// ============================== DUPLICATE DETECTION & AUTO-DELETE ==============================
 function findDuplicates() {
   const map = {};
   students.forEach(s => {
@@ -400,7 +454,6 @@ function renderDuplicates(containerId) {
   });
 }
 
-// Toggle functions
 function toggleAdminDuplicates() {
   const container = document.getElementById('adminDuplicatesContainer');
   const btn = document.getElementById('adminShowDuplicatesBtn');
@@ -426,7 +479,6 @@ function toggleTeacherDuplicates() {
   }
 }
 
-// ============================== AUTO DELETE DUPLICATES ==============================
 async function autoDeleteDuplicates() {
   const dups = findDuplicates();
   const keys = Object.keys(dups);
@@ -435,13 +487,9 @@ async function autoDeleteDuplicates() {
     return;
   }
   let totalToDelete = 0;
-  keys.forEach(key => {
-    const ids = dups[key].ids;
-    totalToDelete += ids.length - 1;
-  });
-  if (!confirm(`Found ${keys.length} duplicate groups. This will delete ${totalToDelete} duplicate records. Are you sure?`)) {
-    return;
-  }
+  keys.forEach(key => totalToDelete += dups[key].ids.length - 1);
+  if (!confirm(`Found ${keys.length} duplicate groups. This will delete ${totalToDelete} duplicate records. Are you sure?`)) return;
+
   showLoading(true);
   try {
     const deletions = [];
@@ -456,13 +504,15 @@ async function autoDeleteDuplicates() {
       });
     });
     await Promise.all(deletions);
-    // Update current selection
+
+    // Update selections
     if (currentStudentId && !students.some(s => s.id === currentStudentId)) {
       currentStudentId = students.length ? students[0].id : null;
     }
     if (currentTeacherCardId && !teachers.some(t => t.id === currentTeacherCardId)) {
       currentTeacherCardId = teachers.length ? teachers[0].id : null;
     }
+
     // Re-render UI
     if (currentUser && currentUser.role === 'admin') {
       if (currentAdminMode === 'student') {
@@ -479,15 +529,12 @@ async function autoDeleteDuplicates() {
       filterTStudList();
       updateTeacherStats(teacherSelectedClass);
     }
-    // Refresh duplicates containers if visible
+    // Refresh duplicate containers if visible
     const adminDup = document.getElementById('adminDuplicatesContainer');
-    if (adminDup && adminDup.style.display === 'block') {
-      renderDuplicates('adminDuplicatesContainer');
-    }
+    if (adminDup && adminDup.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
     const teacherDup = document.getElementById('teacherDuplicatesContainer');
-    if (teacherDup && teacherDup.style.display === 'block') {
-      renderDuplicates('teacherDuplicatesContainer');
-    }
+    if (teacherDup && teacherDup.style.display === 'block') renderDuplicates('teacherDuplicatesContainer');
+
     alert('Duplicates deleted successfully.');
   } catch (e) {
     alert('Error deleting duplicates: ' + e.message);
@@ -497,86 +544,218 @@ async function autoDeleteDuplicates() {
 }
 
 // ============================== STUDENT MANAGEMENT ==============================
-let currentStudentId=null, studentSearchTerm='', adminStudentClassFilter='';
+let currentStudentId = null, studentSearchTerm = '', adminStudentClassFilter = '';
 function renderStudentList() {
-  const c=document.getElementById('studentList'); if(!c) return;
-  let f=students.filter(s=>s.name.toLowerCase().includes(studentSearchTerm.toLowerCase())||(s.class&&s.class.toLowerCase().includes(studentSearchTerm.toLowerCase())));
-  if(adminStudentClassFilter) f=f.filter(s=>s.class===adminStudentClassFilter);
-  if(!f.length){c.innerHTML='<div style="padding:15px;">No students.</div>';return;}
-  c.innerHTML=f.map(s=>`<div class="list-item ${currentStudentId===s.id?'selected':''}" data-id="${escapeHtml(s.id)}"><span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class||'')})</span><div class="item-actions"><button class="view-btn" data-id="${escapeHtml(s.id)}">👁️ View</button><button class="edit-btn" data-id="${escapeHtml(s.id)}">✏️</button><button class="delete-btn" data-id="${escapeHtml(s.id)}">🗑️</button></div></div>`).join('');
+  const c = document.getElementById('studentList');
+  if (!c) return;
+  let f = students.filter(s =>
+    s.name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+    (s.class && s.class.toLowerCase().includes(studentSearchTerm.toLowerCase()))
+  );
+  if (adminStudentClassFilter) f = f.filter(s => s.class === adminStudentClassFilter);
+  if (!f.length) { c.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
+  c.innerHTML = f.map(s => `
+    <div class="list-item ${currentStudentId === s.id ? 'selected' : ''}" data-id="${escapeHtml(s.id)}">
+      <span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class || '')})</span>
+      <div class="item-actions">
+        <button class="view-btn" data-id="${escapeHtml(s.id)}">👁️ View</button>
+        <button class="edit-btn" data-id="${escapeHtml(s.id)}">✏️</button>
+        <button class="delete-btn" data-id="${escapeHtml(s.id)}">🗑️</button>
+      </div>
+    </div>
+  `).join('');
   attachStudentListEvents();
 }
-function attachStudentListEvents(){
-  const container=document.getElementById('studentList'); if(!container) return;
-  container.querySelectorAll('.list-item').forEach(el=>{el.removeEventListener('click',studentItemClick);el.addEventListener('click',studentItemClick);});
-  container.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();viewStudentInfo(b.dataset.id);}));
-  container.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openStudentForm(b.dataset.id);}));
-  container.querySelectorAll('.delete-btn').forEach(b=>b.addEventListener('click',async e=>{e.stopPropagation();if(!confirm('Delete?'))return;showLoading(true);await deleteStudentFromFB(b.dataset.id);students=students.filter(s=>s.id!==b.dataset.id);if(currentStudentId===b.dataset.id)currentStudentId=students[0]?.id||null;renderStudentList();updateAdminStats();currentStudentId?loadStudentToCard(currentStudentId):clearStudentCard();showLoading(false);}));
+function attachStudentListEvents() {
+  const container = document.getElementById('studentList');
+  if (!container) return;
+  container.querySelectorAll('.list-item').forEach(el => {
+    el.removeEventListener('click', studentItemClick);
+    el.addEventListener('click', studentItemClick);
+  });
+  container.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); viewStudentInfo(b.dataset.id); }));
+  container.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openStudentForm(b.dataset.id); }));
+  container.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (!confirm('Delete?')) return;
+    showLoading(true);
+    await deleteStudentFromFB(b.dataset.id);
+    students = students.filter(s => s.id !== b.dataset.id);
+    if (currentStudentId === b.dataset.id) currentStudentId = students[0]?.id || null;
+    renderStudentList();
+    updateAdminStats();
+    currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
+    showLoading(false);
+  }));
 }
-function studentItemClick(e){if(e.target.classList.contains('edit-btn')||e.target.classList.contains('delete-btn')||e.target.classList.contains('view-btn'))return;currentStudentId=e.currentTarget.dataset.id;loadStudentToCard(currentStudentId);renderStudentList();}
-let currentEditId=null;
-function openStudentForm(id=null){
-  const formDiv=document.getElementById('studentFormDiv'); if(!formDiv) return;
-  formDiv.style.display='block';
-  if(!id){currentEditId=null;document.getElementById('formTitle').innerText='Add Student';['studentName','studentClass','studentRoll','studentDob','studentGender','studentFather','studentContact','studentAddress'].forEach(x=>document.getElementById(x).value='');document.getElementById('studentPhotoFile').value='';}
-  else{const s=students.find(s=>s.id===id);if(!s)return;currentEditId=id;document.getElementById('formTitle').innerText='Edit Student';document.getElementById('studentName').value=s.name||'';document.getElementById('studentClass').value=s.class||'';document.getElementById('studentRoll').value=s.roll||'';document.getElementById('studentDob').value=s.dob||'';document.getElementById('studentGender').value=s.gender||'';document.getElementById('studentFather').value=s.father||'';document.getElementById('studentContact').value=s.contact||'';document.getElementById('studentAddress').value=s.address||'';}
+function studentItemClick(e) {
+  if (e.target.classList.contains('edit-btn') || e.target.classList.contains('delete-btn') || e.target.classList.contains('view-btn')) return;
+  currentStudentId = e.currentTarget.dataset.id;
+  loadStudentToCard(currentStudentId);
+  renderStudentList();
 }
-async function saveStudentForm(){
-  const name=document.getElementById('studentName').value.trim();if(!name){alert('Name required');return;}
-  const data={name,class:document.getElementById('studentClass').value,roll:document.getElementById('studentRoll').value,dob:document.getElementById('studentDob').value,gender:document.getElementById('studentGender').value,father:document.getElementById('studentFather').value,contact:document.getElementById('studentContact').value,address:document.getElementById('studentAddress').value,mobile:document.getElementById('studentContact').value};
-  const file=document.getElementById('studentPhotoFile').files[0];let photo='';if(file){try{photo=await fileToBase64(file,60);}catch(e){alert(e);return;}}
+let currentEditId = null;
+function openStudentForm(id = null) {
+  const formDiv = document.getElementById('studentFormDiv');
+  if (!formDiv) return;
+  formDiv.style.display = 'block';
+  if (!id) {
+    currentEditId = null;
+    document.getElementById('formTitle').innerText = 'Add Student';
+    ['studentName', 'studentClass', 'studentRoll', 'studentDob', 'studentGender', 'studentFather', 'studentContact', 'studentAddress']
+      .forEach(x => document.getElementById(x).value = '');
+    document.getElementById('studentPhotoFile').value = '';
+  } else {
+    const s = students.find(s => s.id === id);
+    if (!s) return;
+    currentEditId = id;
+    document.getElementById('formTitle').innerText = 'Edit Student';
+    document.getElementById('studentName').value = s.name || '';
+    document.getElementById('studentClass').value = s.class || '';
+    document.getElementById('studentRoll').value = s.roll || '';
+    document.getElementById('studentDob').value = s.dob || '';
+    document.getElementById('studentGender').value = s.gender || '';
+    document.getElementById('studentFather').value = s.father || '';
+    document.getElementById('studentContact').value = s.contact || '';
+    document.getElementById('studentAddress').value = s.address || '';
+  }
+}
+async function saveStudentForm() {
+  const name = document.getElementById('studentName').value.trim();
+  if (!name) { alert('Name required'); return; }
+  const data = {
+    name,
+    class: document.getElementById('studentClass').value,
+    roll: document.getElementById('studentRoll').value,
+    dob: document.getElementById('studentDob').value,
+    gender: document.getElementById('studentGender').value,
+    father: document.getElementById('studentFather').value,
+    contact: document.getElementById('studentContact').value,
+    address: document.getElementById('studentAddress').value,
+    mobile: document.getElementById('studentContact').value
+  };
+  const file = document.getElementById('studentPhotoFile').files[0];
+  let photo = '';
+  if (file) { try { photo = await fileToBase64(file, 60); } catch (e) { alert(e); return; } }
   showLoading(true);
-  if(currentEditId===null){const newStudent={...data,photoImage:photo,positions:{}};const added=await addStudentToFB(newStudent);students.push(added);currentStudentId=added.id;}
-  else{const idx=students.findIndex(s=>s.id===currentEditId);if(idx!==-1){const updated={...students[idx],...data,photoImage:photo||students[idx].photoImage};await updateStudentInFB(updated);students[idx]=updated;}currentStudentId=currentEditId;}
-  renderStudentList();updateAdminStats();loadStudentToCard(currentStudentId);document.getElementById('studentFormDiv').style.display='none';currentEditId=null;showLoading(false);
+  if (currentEditId === null) {
+    const newStudent = { ...data, photoImage: photo, positions: {} };
+    const added = await addStudentToFB(newStudent);
+    students.push(added);
+    currentStudentId = added.id;
+  } else {
+    const idx = students.findIndex(s => s.id === currentEditId);
+    if (idx !== -1) {
+      const updated = { ...students[idx], ...data, photoImage: photo || students[idx].photoImage };
+      await updateStudentInFB(updated);
+      students[idx] = updated;
+    }
+    currentStudentId = currentEditId;
+  }
+  renderStudentList();
+  updateAdminStats();
+  loadStudentToCard(currentStudentId);
+  document.getElementById('studentFormDiv').style.display = 'none';
+  currentEditId = null;
+  showLoading(false);
 }
-function cancelStudentForm(){document.getElementById('studentFormDiv').style.display='none';currentEditId=null;}
-function filterStudentList(){const inp=document.getElementById('studentSearch');if(inp)studentSearchTerm=inp.value;renderStudentList();}
-function filterAdminStudentByClass(){adminStudentClassFilter=document.getElementById('adminStudentClassFilter')?.value||'';renderStudentList();}
+function cancelStudentForm() {
+  document.getElementById('studentFormDiv').style.display = 'none';
+  currentEditId = null;
+}
+function filterStudentList() {
+  const inp = document.getElementById('studentSearch');
+  if (inp) studentSearchTerm = inp.value;
+  renderStudentList();
+}
+function filterAdminStudentByClass() {
+  adminStudentClassFilter = document.getElementById('adminStudentClassFilter')?.value || '';
+  renderStudentList();
+}
 
 // --- Student Card ---
-let studentLocked=false;
-function clearStudentCard(){if(!document.getElementById('studentCard'))return;document.getElementById('showName').innerText='YOUR NAME';['showClass','showRoll','showDob','showFather','showContact','showAddress'].forEach(x=>document.getElementById(x).innerText='');document.getElementById('photoPreview').src='';applyStudentGlobal();applyPhotoShapeToCards();applyTextColorToCards();}
-function loadStudentToCard(id){const s=students.find(s=>s.id===id);if(!s||!document.getElementById('showName'))return;document.getElementById('showName').innerText=s.name||'YOUR NAME';document.getElementById('showClass').innerText=s.class||'';document.getElementById('showRoll').innerText=s.roll||'';document.getElementById('showDob').innerText=s.dob||'';document.getElementById('showFather').innerText=s.father||'';document.getElementById('showContact').innerText=s.contact||'';document.getElementById('showAddress').innerText=s.address||'';if(s.photoImage)document.getElementById('photoPreview').src=s.photoImage;applyStudentGlobal();applyPhotoShapeToCards();applyTextColorToCards();if(s.positions){document.querySelectorAll('#studentCard .draggable').forEach(el=>{const idAttr=el.getAttribute('data-id');if(idAttr&&s.positions[idAttr]){el.style.left=s.positions[idAttr].left;el.style.top=s.positions[idAttr].top;}});}}
-function resetStudentPos(){if(studentLocked){alert('Unlock first');return;}document.querySelectorAll('#studentCard .draggable').forEach(el=>{const l=el.getAttribute('data-original-left');const t=el.getAttribute('data-original-top');if(l&&t){el.style.left=l+'px';el.style.top=t+'px';}});saveStudentPositions();}
-function toggleStudentLock(){studentLocked=!studentLocked;document.getElementById('lockBtn').innerText=studentLocked?'🔒 Locked':'🔓 Unlock';}
-function downloadStudentCard(){html2canvas(document.getElementById('studentCard'),{scale:3,backgroundColor:'#ffffff'}).then(c=>c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(document.getElementById('showName').innerText||'student')+'_ID_Card.png';a.click();}));}
+let studentLocked = false;
+function clearStudentCard() {
+  if (!document.getElementById('studentCard')) return;
+  document.getElementById('showName').innerText = 'YOUR NAME';
+  ['showClass', 'showRoll', 'showDob', 'showFather', 'showContact', 'showAddress'].forEach(x => document.getElementById(x).innerText = '');
+  document.getElementById('photoPreview').src = '';
+  applyStudentGlobal();
+  applyPhotoShapeToCards();
+  applyTextColorToCards();
+}
+function loadStudentToCard(id) {
+  const s = students.find(s => s.id === id);
+  if (!s || !document.getElementById('showName')) return;
+  document.getElementById('showName').innerText = s.name || 'YOUR NAME';
+  document.getElementById('showClass').innerText = s.class || '';
+  document.getElementById('showRoll').innerText = s.roll || '';
+  document.getElementById('showDob').innerText = s.dob || '';
+  document.getElementById('showFather').innerText = s.father || '';
+  document.getElementById('showContact').innerText = s.contact || '';
+  document.getElementById('showAddress').innerText = s.address || '';
+  if (s.photoImage) document.getElementById('photoPreview').src = s.photoImage;
+  applyStudentGlobal();
+  applyPhotoShapeToCards();
+  applyTextColorToCards();
+  if (s.positions) {
+    document.querySelectorAll('#studentCard .draggable').forEach(el => {
+      const idAttr = el.getAttribute('data-id');
+      if (idAttr && s.positions[idAttr]) {
+        el.style.left = s.positions[idAttr].left;
+        el.style.top = s.positions[idAttr].top;
+      }
+    });
+  }
+}
+function resetStudentPos() {
+  if (studentLocked) { alert('Unlock first'); return; }
+  document.querySelectorAll('#studentCard .draggable').forEach(el => {
+    const l = el.getAttribute('data-original-left');
+    const t = el.getAttribute('data-original-top');
+    if (l && t) { el.style.left = l + 'px'; el.style.top = t + 'px'; }
+  });
+  saveStudentPositions();
+}
+function toggleStudentLock() {
+  studentLocked = !studentLocked;
+  document.getElementById('lockBtn').innerText = studentLocked ? '🔒 Locked' : '🔓 Unlock';
+}
+function downloadStudentCard() {
+  html2canvas(document.getElementById('studentCard'), { scale: 3, backgroundColor: '#ffffff' })
+    .then(c => c.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = (document.getElementById('showName').innerText || 'student') + '_ID_Card.png';
+      a.click();
+    }));
+}
 
-// --- Apply photo shape to BOTH cards ---
+// --- Apply shape & color ---
 function applyPhotoShapeToCards() {
-  const studentPhotoBox = document.querySelector('#studentCard .photo-box');
-  if (studentPhotoBox) {
-    studentPhotoBox.classList.remove('photo-shape-circle', 'photo-shape-hexagon', 'photo-shape-diamond', 'photo-shape-pentagon', 'photo-shape-rounded');
-    if (photoShape === 'circle') studentPhotoBox.classList.add('photo-shape-circle');
-    else if (photoShape === 'hexagon') studentPhotoBox.classList.add('photo-shape-hexagon');
-    else if (photoShape === 'diamond') studentPhotoBox.classList.add('photo-shape-diamond');
-    else if (photoShape === 'pentagon') studentPhotoBox.classList.add('photo-shape-pentagon');
-    else studentPhotoBox.classList.add('photo-shape-rounded');
-  }
-  const teacherPhotoBox = document.querySelector('#teacherCard .photo-box');
-  if (teacherPhotoBox) {
-    teacherPhotoBox.classList.remove('photo-shape-circle', 'photo-shape-hexagon', 'photo-shape-diamond', 'photo-shape-pentagon', 'photo-shape-rounded');
-    if (photoShape === 'circle') teacherPhotoBox.classList.add('photo-shape-circle');
-    else if (photoShape === 'hexagon') teacherPhotoBox.classList.add('photo-shape-hexagon');
-    else if (photoShape === 'diamond') teacherPhotoBox.classList.add('photo-shape-diamond');
-    else if (photoShape === 'pentagon') teacherPhotoBox.classList.add('photo-shape-pentagon');
-    else teacherPhotoBox.classList.add('photo-shape-rounded');
-  }
+  ['studentCard', 'teacherCard'].forEach(cardId => {
+    const photoBox = document.querySelector(`#${cardId} .photo-box`);
+    if (photoBox) {
+      photoBox.classList.remove('photo-shape-circle', 'photo-shape-hexagon', 'photo-shape-diamond', 'photo-shape-pentagon', 'photo-shape-rounded');
+      if (photoShape === 'circle') photoBox.classList.add('photo-shape-circle');
+      else if (photoShape === 'hexagon') photoBox.classList.add('photo-shape-hexagon');
+      else if (photoShape === 'diamond') photoBox.classList.add('photo-shape-diamond');
+      else if (photoShape === 'pentagon') photoBox.classList.add('photo-shape-pentagon');
+      else photoBox.classList.add('photo-shape-rounded');
+    }
+  });
 }
-
 function applyTextColorToCards() {
-  const studentInfo = document.querySelector('#studentCard .info');
-  const teacherInfo = document.querySelector('#teacherCard .info');
-  if (studentInfo) {
-    studentInfo.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
-  }
-  if (teacherInfo) {
-    teacherInfo.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
-  }
+  ['studentCard', 'teacherCard'].forEach(cardId => {
+    const info = document.querySelector(`#${cardId} .info`);
+    if (info) {
+      info.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
+    }
+  });
 }
 
-// --- DRAG ---
-let studentDrag=null, sOffX=0, sOffY=0;
+// --- Drag for Student Card ---
+let studentDrag = null, sOffX = 0, sOffY = 0;
 function sStart(e, element) {
   if (studentLocked || !document.getElementById('studentCard')) return;
   studentDrag = element;
@@ -605,27 +784,193 @@ function sEnd() {
     studentDrag = null;
   }
 }
-function saveStudentPositions(){if(!currentStudentId)return;const s=students.find(s=>s.id===currentStudentId);if(s){const pos={};document.querySelectorAll('#studentCard .draggable').forEach(el=>{const idAttr=el.getAttribute('data-id');if(idAttr)pos[idAttr]={left:el.style.left,top:el.style.top};});s.positions=pos;updateStudentInFB(s);}}
+function saveStudentPositions() {
+  if (!currentStudentId) return;
+  const s = students.find(s => s.id === currentStudentId);
+  if (s) {
+    const pos = {};
+    document.querySelectorAll('#studentCard .draggable').forEach(el => {
+      const idAttr = el.getAttribute('data-id');
+      if (idAttr) pos[idAttr] = { left: el.style.left, top: el.style.top };
+    });
+    s.positions = pos;
+    updateStudentInFB(s);
+  }
+}
 
 // ============================== TEACHER MANAGEMENT ==============================
-let teacherSearchTerm='',currentTeacherCardId=null;
-function renderTeacherList(){const c=document.getElementById('teacherList');if(!c)return;const f=teachers.filter(t=>t.name.toLowerCase().includes(teacherSearchTerm.toLowerCase())||(t.mobile&&t.mobile.includes(teacherSearchTerm)));if(!f.length){c.innerHTML='<div style="padding:15px;">No teachers.</div>';return;}c.innerHTML=f.map(t=>`<div class="list-item ${currentTeacherCardId===t.id?'selected':''}" data-id="${escapeHtml(t.id)}"><span class="item-name">${escapeHtml(t.name)} (${escapeHtml(t.mobile)})</span><div class="item-actions"><button class="edit-teacher-btn" data-id="${escapeHtml(t.id)}">✏️</button><button class="delete-teacher-btn" data-id="${escapeHtml(t.id)}">🗑️</button></div></div>`).join('');attachTeacherListEvents();}
-function attachTeacherListEvents(){const container=document.getElementById('teacherList');if(!container)return;container.querySelectorAll('.list-item').forEach(el=>{el.removeEventListener('click',teacherItemClick);el.addEventListener('click',teacherItemClick);});container.querySelectorAll('.edit-teacher-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTeacherForm(b.dataset.id);}));container.querySelectorAll('.delete-teacher-btn').forEach(b=>b.addEventListener('click',async e=>{e.stopPropagation();if(!confirm('Delete?'))return;showLoading(true);await deleteTeacherFromFB(b.dataset.id);teachers=teachers.filter(t=>t.id!==b.dataset.id);if(currentTeacherCardId===b.dataset.id)currentTeacherCardId=teachers[0]?.id||null;renderTeacherList();updateAdminStats();currentTeacherCardId?loadTeacherToCard(currentTeacherCardId):clearTeacherCard();showLoading(false);}));}
-function teacherItemClick(e){if(e.target.classList.contains('edit-teacher-btn')||e.target.classList.contains('delete-teacher-btn'))return;currentTeacherCardId=e.currentTarget.dataset.id;loadTeacherToCard(currentTeacherCardId);renderTeacherList();}
-let currentTeacherEditId=null;
-function openTeacherForm(id=null){const formDiv=document.getElementById('teacherFormDiv');if(!formDiv)return;formDiv.style.display='block';if(!id){currentTeacherEditId=null;document.getElementById('teacherFormTitle').innerText='Add Teacher';['teacherName','teacherFatherName','teacherMobile','teacherDob','teacherDesignation','teacherAddress'].forEach(x=>document.getElementById(x).value='');document.getElementById('teacherPhotoFile').value='';}else{const t=teachers.find(t=>t.id===id);if(!t)return;currentTeacherEditId=id;document.getElementById('teacherFormTitle').innerText='Edit Teacher';document.getElementById('teacherName').value=t.name||'';document.getElementById('teacherFatherName').value=t.fatherName||'';document.getElementById('teacherMobile').value=t.mobile||'';document.getElementById('teacherDob').value=t.dob||'';document.getElementById('teacherDesignation').value=t.designation||'';document.getElementById('teacherAddress').value=t.address||'';}}
-async function saveTeacherForm(){const name=document.getElementById('teacherName').value.trim();const mobile=document.getElementById('teacherMobile').value.trim();const dob=document.getElementById('teacherDob').value.trim();if(!name||!mobile||!dob){alert('Name, Mobile, DOB required');return;}const data={name,fatherName:document.getElementById('teacherFatherName').value.trim(),mobile,dob,designation:document.getElementById('teacherDesignation').value.trim(),address:document.getElementById('teacherAddress').value.trim()};const file=document.getElementById('teacherPhotoFile').files[0];let photo='';if(file){try{photo=await fileToBase64(file,60);}catch(e){alert(e);return;}}showLoading(true);if(currentTeacherEditId===null){const newTeacher={...data,photo,positions:{}};const added=await addTeacherToFB(newTeacher);teachers.push(added);currentTeacherCardId=added.id;}else{const idx=teachers.findIndex(t=>t.id===currentTeacherEditId);if(idx!==-1){const updated={...teachers[idx],...data,photo:photo||teachers[idx].photo};await updateTeacherInFB(updated);teachers[idx]=updated;}currentTeacherCardId=currentTeacherEditId;}renderTeacherList();updateAdminStats();loadTeacherToCard(currentTeacherCardId);document.getElementById('teacherFormDiv').style.display='none';currentTeacherEditId=null;showLoading(false);}
-function cancelTeacherForm(){document.getElementById('teacherFormDiv').style.display='none';currentTeacherEditId=null;}
-function filterTeacherList(){const inp=document.getElementById('teacherSearch');if(inp)teacherSearchTerm=inp.value;renderTeacherList();}
-let teacherLocked=false;
-function clearTeacherCard(){if(!document.getElementById('teacherCard'))return;document.getElementById('tPhotoPreview').src='';document.getElementById('tShowName').innerText='TEACHER NAME';['tShowDesignation','tShowFather','tShowMobile','tShowDob','tShowAddress'].forEach(x=>document.getElementById(x).innerText='');applyTeacherGlobal();applyPhotoShapeToCards();applyTextColorToCards();}
-function loadTeacherToCard(id){const t=teachers.find(t=>t.id===id);if(!t||!document.getElementById('teacherCard'))return;document.getElementById('tPhotoPreview').src=t.photo||'';document.getElementById('tShowName').innerText=t.name||'TEACHER NAME';document.getElementById('tShowDesignation').innerText=t.designation||'';document.getElementById('tShowFather').innerText=t.fatherName||'';document.getElementById('tShowMobile').innerText=t.mobile||'';document.getElementById('tShowDob').innerText=t.dob||'';document.getElementById('tShowAddress').innerText=t.address||'';applyTeacherGlobal();applyPhotoShapeToCards();applyTextColorToCards();if(t.positions){document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const idAttr=el.getAttribute('data-id');if(idAttr&&t.positions[idAttr]){el.style.left=t.positions[idAttr].left;el.style.top=t.positions[idAttr].top;}});}}
-function resetTeacherPos(){if(teacherLocked){alert('Unlock first');return;}document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const l=el.getAttribute('data-original-left');const t=el.getAttribute('data-original-top');if(l&&t){el.style.left=l+'px';el.style.top=t+'px';}});saveTeacherPositions();}
-function toggleTeacherLock(){teacherLocked=!teacherLocked;document.getElementById('teacherLockBtn').innerText=teacherLocked?'🔒 Locked':'🔓 Unlock';}
-function downloadTeacherCard(){html2canvas(document.getElementById('teacherCard'),{scale:3,backgroundColor:'#ffffff'}).then(c=>c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(document.getElementById('tShowName').innerText||'teacher')+'_ID_Card.png';a.click();}));}
-
-// Teacher drag
-let teacherDrag=null, tOffX=0, tOffY=0;
+let teacherSearchTerm = '', currentTeacherCardId = null;
+function renderTeacherList() {
+  const c = document.getElementById('teacherList');
+  if (!c) return;
+  const f = teachers.filter(t => t.name.toLowerCase().includes(teacherSearchTerm.toLowerCase()) || (t.mobile && t.mobile.includes(teacherSearchTerm)));
+  if (!f.length) { c.innerHTML = '<div style="padding:15px;">No teachers.</div>'; return; }
+  c.innerHTML = f.map(t => `
+    <div class="list-item ${currentTeacherCardId === t.id ? 'selected' : ''}" data-id="${escapeHtml(t.id)}">
+      <span class="item-name">${escapeHtml(t.name)} (${escapeHtml(t.mobile)})</span>
+      <div class="item-actions">
+        <button class="edit-teacher-btn" data-id="${escapeHtml(t.id)}">✏️</button>
+        <button class="delete-teacher-btn" data-id="${escapeHtml(t.id)}">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+  attachTeacherListEvents();
+}
+function attachTeacherListEvents() {
+  const container = document.getElementById('teacherList');
+  if (!container) return;
+  container.querySelectorAll('.list-item').forEach(el => {
+    el.removeEventListener('click', teacherItemClick);
+    el.addEventListener('click', teacherItemClick);
+  });
+  container.querySelectorAll('.edit-teacher-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openTeacherForm(b.dataset.id); }));
+  container.querySelectorAll('.delete-teacher-btn').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (!confirm('Delete?')) return;
+    showLoading(true);
+    await deleteTeacherFromFB(b.dataset.id);
+    teachers = teachers.filter(t => t.id !== b.dataset.id);
+    if (currentTeacherCardId === b.dataset.id) currentTeacherCardId = teachers[0]?.id || null;
+    renderTeacherList();
+    updateAdminStats();
+    currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
+    showLoading(false);
+  }));
+}
+function teacherItemClick(e) {
+  if (e.target.classList.contains('edit-teacher-btn') || e.target.classList.contains('delete-teacher-btn')) return;
+  currentTeacherCardId = e.currentTarget.dataset.id;
+  loadTeacherToCard(currentTeacherCardId);
+  renderTeacherList();
+}
+let currentTeacherEditId = null;
+function openTeacherForm(id = null) {
+  const formDiv = document.getElementById('teacherFormDiv');
+  if (!formDiv) return;
+  formDiv.style.display = 'block';
+  if (!id) {
+    currentTeacherEditId = null;
+    document.getElementById('teacherFormTitle').innerText = 'Add Teacher';
+    ['teacherName', 'teacherFatherName', 'teacherMobile', 'teacherDob', 'teacherDesignation', 'teacherAddress']
+      .forEach(x => document.getElementById(x).value = '');
+    document.getElementById('teacherPhotoFile').value = '';
+  } else {
+    const t = teachers.find(t => t.id === id);
+    if (!t) return;
+    currentTeacherEditId = id;
+    document.getElementById('teacherFormTitle').innerText = 'Edit Teacher';
+    document.getElementById('teacherName').value = t.name || '';
+    document.getElementById('teacherFatherName').value = t.fatherName || '';
+    document.getElementById('teacherMobile').value = t.mobile || '';
+    document.getElementById('teacherDob').value = t.dob || '';
+    document.getElementById('teacherDesignation').value = t.designation || '';
+    document.getElementById('teacherAddress').value = t.address || '';
+  }
+}
+async function saveTeacherForm() {
+  const name = document.getElementById('teacherName').value.trim();
+  const mobile = document.getElementById('teacherMobile').value.trim();
+  const dob = document.getElementById('teacherDob').value.trim();
+  if (!name || !mobile || !dob) { alert('Name, Mobile, DOB required'); return; }
+  const data = {
+    name,
+    fatherName: document.getElementById('teacherFatherName').value.trim(),
+    mobile,
+    dob,
+    designation: document.getElementById('teacherDesignation').value.trim(),
+    address: document.getElementById('teacherAddress').value.trim()
+  };
+  const file = document.getElementById('teacherPhotoFile').files[0];
+  let photo = '';
+  if (file) { try { photo = await fileToBase64(file, 60); } catch (e) { alert(e); return; } }
+  showLoading(true);
+  if (currentTeacherEditId === null) {
+    const newTeacher = { ...data, photo, positions: {} };
+    const added = await addTeacherToFB(newTeacher);
+    teachers.push(added);
+    currentTeacherCardId = added.id;
+  } else {
+    const idx = teachers.findIndex(t => t.id === currentTeacherEditId);
+    if (idx !== -1) {
+      const updated = { ...teachers[idx], ...data, photo: photo || teachers[idx].photo };
+      await updateTeacherInFB(updated);
+      teachers[idx] = updated;
+    }
+    currentTeacherCardId = currentTeacherEditId;
+  }
+  renderTeacherList();
+  updateAdminStats();
+  loadTeacherToCard(currentTeacherCardId);
+  document.getElementById('teacherFormDiv').style.display = 'none';
+  currentTeacherEditId = null;
+  showLoading(false);
+}
+function cancelTeacherForm() {
+  document.getElementById('teacherFormDiv').style.display = 'none';
+  currentTeacherEditId = null;
+}
+function filterTeacherList() {
+  const inp = document.getElementById('teacherSearch');
+  if (inp) teacherSearchTerm = inp.value;
+  renderTeacherList();
+}
+let teacherLocked = false;
+function clearTeacherCard() {
+  if (!document.getElementById('teacherCard')) return;
+  document.getElementById('tPhotoPreview').src = '';
+  document.getElementById('tShowName').innerText = 'TEACHER NAME';
+  ['tShowDesignation', 'tShowFather', 'tShowMobile', 'tShowDob', 'tShowAddress'].forEach(x => document.getElementById(x).innerText = '');
+  applyTeacherGlobal();
+  applyPhotoShapeToCards();
+  applyTextColorToCards();
+}
+function loadTeacherToCard(id) {
+  const t = teachers.find(t => t.id === id);
+  if (!t || !document.getElementById('teacherCard')) return;
+  document.getElementById('tPhotoPreview').src = t.photo || '';
+  document.getElementById('tShowName').innerText = t.name || 'TEACHER NAME';
+  document.getElementById('tShowDesignation').innerText = t.designation || '';
+  document.getElementById('tShowFather').innerText = t.fatherName || '';
+  document.getElementById('tShowMobile').innerText = t.mobile || '';
+  document.getElementById('tShowDob').innerText = t.dob || '';
+  document.getElementById('tShowAddress').innerText = t.address || '';
+  applyTeacherGlobal();
+  applyPhotoShapeToCards();
+  applyTextColorToCards();
+  if (t.positions) {
+    document.querySelectorAll('#teacherCard .draggable').forEach(el => {
+      const idAttr = el.getAttribute('data-id');
+      if (idAttr && t.positions[idAttr]) {
+        el.style.left = t.positions[idAttr].left;
+        el.style.top = t.positions[idAttr].top;
+      }
+    });
+  }
+}
+function resetTeacherPos() {
+  if (teacherLocked) { alert('Unlock first'); return; }
+  document.querySelectorAll('#teacherCard .draggable').forEach(el => {
+    const l = el.getAttribute('data-original-left');
+    const t = el.getAttribute('data-original-top');
+    if (l && t) { el.style.left = l + 'px'; el.style.top = t + 'px'; }
+  });
+  saveTeacherPositions();
+}
+function toggleTeacherLock() {
+  teacherLocked = !teacherLocked;
+  document.getElementById('teacherLockBtn').innerText = teacherLocked ? '🔒 Locked' : '🔓 Unlock';
+}
+function downloadTeacherCard() {
+  html2canvas(document.getElementById('teacherCard'), { scale: 3, backgroundColor: '#ffffff' })
+    .then(c => c.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = (document.getElementById('tShowName').innerText || 'teacher') + '_ID_Card.png';
+      a.click();
+    }));
+}
+// --- Drag for Teacher Card ---
+let teacherDrag = null, tOffX = 0, tOffY = 0;
 function tStart(e, element) {
   if (teacherLocked || !document.getElementById('teacherCard')) return;
   teacherDrag = element;
@@ -654,9 +999,21 @@ function tEnd() {
     teacherDrag = null;
   }
 }
-function saveTeacherPositions(){if(!currentTeacherCardId)return;const t=teachers.find(t=>t.id===currentTeacherCardId);if(t){const pos={};document.querySelectorAll('#teacherCard .draggable').forEach(el=>{const idAttr=el.getAttribute('data-id');if(idAttr)pos[idAttr]={left:el.style.left,top:el.style.top};});t.positions=pos;updateTeacherInFB(t);}}
+function saveTeacherPositions() {
+  if (!currentTeacherCardId) return;
+  const t = teachers.find(t => t.id === currentTeacherCardId);
+  if (t) {
+    const pos = {};
+    document.querySelectorAll('#teacherCard .draggable').forEach(el => {
+      const idAttr = el.getAttribute('data-id');
+      if (idAttr) pos[idAttr] = { left: el.style.left, top: el.style.top };
+    });
+    t.positions = pos;
+    updateTeacherInFB(t);
+  }
+}
 
-// ============================== DRAG LISTENERS ==============================
+// ============================== DRAG LISTENERS (attach after DOM) ==============================
 function attachDragListeners() {
   const studentCard = document.getElementById('studentCard');
   const teacherCard = document.getElementById('teacherCard');
@@ -677,24 +1034,109 @@ function teacherDragHandler(e) {
   const target = e.target.closest('.draggable');
   if (target) tStart(e, target);
 }
-
-document.addEventListener('mousemove', e => { if(studentDrag) sMove(e); if(teacherDrag) tMove(e); });
+// Global mouse move/up
+document.addEventListener('mousemove', e => { if (studentDrag) sMove(e); if (teacherDrag) tMove(e); });
 document.addEventListener('mouseup', () => { sEnd(); tEnd(); });
 
-// ============================== TEACHER STUDENT MANAGEMENT ==============================
-let tStudSearch='',tStudEditId=null,teacherSelectedClass='';
-function filterByClass(){
+// ============================== TEACHER STUDENT MANAGEMENT (for teacher role) ==============================
+let tStudSearch = '', tStudEditId = null, teacherSelectedClass = '';
+function filterByClass() {
   teacherSelectedClass = document.getElementById('teacherClassFilter')?.value || '';
   filterTStudList();
   updateTeacherStats(teacherSelectedClass);
 }
-function renderTStudList(){const c=document.getElementById('teacherStudentList');if(!c)return;const filtered=students.filter(s=>{const nameMatch=s.name.toLowerCase().includes(tStudSearch.toLowerCase())||(s.class&&s.class.toLowerCase().includes(tStudSearch.toLowerCase()));const classMatch=teacherSelectedClass===''||s.class===teacherSelectedClass;return nameMatch&&classMatch;});if(!filtered.length){c.innerHTML='<div style="padding:15px;">No students.</div>';return;}c.innerHTML=filtered.map(s=>`<div class="list-item"><span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class||'')})</span><div class="item-actions"><button class="view-btn" data-id="${escapeHtml(s.id)}">👁️ View</button><button class="edit-btn" data-id="${escapeHtml(s.id)}">✏️ Edit</button></div></div>`).join('');c.querySelectorAll('.view-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();viewStudentInfo(b.dataset.id);}));c.querySelectorAll('.edit-btn').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openTStudForm(b.dataset.id);}));}
-function openTStudForm(id=null){const formDiv=document.getElementById('teacherStudentFormDiv');if(!formDiv)return;formDiv.style.display='block';if(!id){tStudEditId=null;document.getElementById('tFormTitle').innerText='Add Student';document.getElementById('tStudName').value='';document.getElementById('tStudClass').value=teacherSelectedClass||'';document.getElementById('tStudDob').value='';document.getElementById('tStudGender').value='';['tStudRoll','tStudFather','tStudContact','tStudAddress'].forEach(x=>document.getElementById(x).value='');}else{const s=students.find(s=>s.id===id);if(!s)return;tStudEditId=id;document.getElementById('tFormTitle').innerText='Edit Student';document.getElementById('tStudName').value=s.name||'';document.getElementById('tStudClass').value=s.class||'';document.getElementById('tStudRoll').value=s.roll||'';document.getElementById('tStudDob').value=s.dob||'';document.getElementById('tStudGender').value=s.gender||'';document.getElementById('tStudFather').value=s.father||'';document.getElementById('tStudContact').value=s.contact||'';document.getElementById('tStudAddress').value=s.address||'';}}
-async function saveTStudForm(){const name=document.getElementById('tStudName').value.trim();if(!name){alert('Name required');return;}const data={name,class:document.getElementById('tStudClass').value,roll:document.getElementById('tStudRoll').value,dob:document.getElementById('tStudDob').value,gender:document.getElementById('tStudGender').value,father:document.getElementById('tStudFather').value,contact:document.getElementById('tStudContact').value,address:document.getElementById('tStudAddress').value,mobile:document.getElementById('tStudContact').value};const file=document.getElementById('tStudPhoto').files[0];let photo='';if(file){try{photo=await fileToBase64(file,60);}catch(e){alert(e);return;}}showLoading(true);if(tStudEditId===null){const newStudent={...data,photoImage:photo,positions:{}};const added=await addStudentToFB(newStudent);students.push(added);}else{const idx=students.findIndex(s=>s.id===tStudEditId);if(idx!==-1){const updated={...students[idx],...data,photoImage:photo||students[idx].photoImage};await updateStudentInFB(updated);students[idx]=updated;}}document.getElementById('teacherStudentFormDiv').style.display='none';tStudEditId=null;filterTStudList();updateTeacherStats(teacherSelectedClass);updateAdminStats();showLoading(false);}
-function cancelTStudForm(){document.getElementById('teacherStudentFormDiv').style.display='none';tStudEditId=null;}
-function filterTStudList(){renderTStudList();}
-async function initTeacherUI(){
-  document.getElementById('mainContainer').innerHTML=`
+function renderTStudList() {
+  const c = document.getElementById('teacherStudentList');
+  if (!c) return;
+  const filtered = students.filter(s => {
+    const nameMatch = s.name.toLowerCase().includes(tStudSearch.toLowerCase()) || (s.class && s.class.toLowerCase().includes(tStudSearch.toLowerCase()));
+    const classMatch = teacherSelectedClass === '' || s.class === teacherSelectedClass;
+    return nameMatch && classMatch;
+  });
+  if (!filtered.length) { c.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
+  c.innerHTML = filtered.map(s => `
+    <div class="list-item">
+      <span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class || '')})</span>
+      <div class="item-actions">
+        <button class="view-btn" data-id="${escapeHtml(s.id)}">👁️ View</button>
+        <button class="edit-btn" data-id="${escapeHtml(s.id)}">✏️ Edit</button>
+      </div>
+    </div>
+  `).join('');
+  c.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); viewStudentInfo(b.dataset.id); }));
+  c.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openTStudForm(b.dataset.id); }));
+}
+function openTStudForm(id = null) {
+  const formDiv = document.getElementById('teacherStudentFormDiv');
+  if (!formDiv) return;
+  formDiv.style.display = 'block';
+  if (!id) {
+    tStudEditId = null;
+    document.getElementById('tFormTitle').innerText = 'Add Student';
+    document.getElementById('tStudName').value = '';
+    document.getElementById('tStudClass').value = teacherSelectedClass || '';
+    document.getElementById('tStudDob').value = '';
+    document.getElementById('tStudGender').value = '';
+    ['tStudRoll', 'tStudFather', 'tStudContact', 'tStudAddress'].forEach(x => document.getElementById(x).value = '');
+  } else {
+    const s = students.find(s => s.id === id);
+    if (!s) return;
+    tStudEditId = id;
+    document.getElementById('tFormTitle').innerText = 'Edit Student';
+    document.getElementById('tStudName').value = s.name || '';
+    document.getElementById('tStudClass').value = s.class || '';
+    document.getElementById('tStudRoll').value = s.roll || '';
+    document.getElementById('tStudDob').value = s.dob || '';
+    document.getElementById('tStudGender').value = s.gender || '';
+    document.getElementById('tStudFather').value = s.father || '';
+    document.getElementById('tStudContact').value = s.contact || '';
+    document.getElementById('tStudAddress').value = s.address || '';
+  }
+}
+async function saveTStudForm() {
+  const name = document.getElementById('tStudName').value.trim();
+  if (!name) { alert('Name required'); return; }
+  const data = {
+    name,
+    class: document.getElementById('tStudClass').value,
+    roll: document.getElementById('tStudRoll').value,
+    dob: document.getElementById('tStudDob').value,
+    gender: document.getElementById('tStudGender').value,
+    father: document.getElementById('tStudFather').value,
+    contact: document.getElementById('tStudContact').value,
+    address: document.getElementById('tStudAddress').value,
+    mobile: document.getElementById('tStudContact').value
+  };
+  const file = document.getElementById('tStudPhoto').files[0];
+  let photo = '';
+  if (file) { try { photo = await fileToBase64(file, 60); } catch (e) { alert(e); return; } }
+  showLoading(true);
+  if (tStudEditId === null) {
+    const newStudent = { ...data, photoImage: photo, positions: {} };
+    const added = await addStudentToFB(newStudent);
+    students.push(added);
+  } else {
+    const idx = students.findIndex(s => s.id === tStudEditId);
+    if (idx !== -1) {
+      const updated = { ...students[idx], ...data, photoImage: photo || students[idx].photoImage };
+      await updateStudentInFB(updated);
+      students[idx] = updated;
+    }
+  }
+  document.getElementById('teacherStudentFormDiv').style.display = 'none';
+  tStudEditId = null;
+  filterTStudList();
+  updateTeacherStats(teacherSelectedClass);
+  updateAdminStats();
+  showLoading(false);
+}
+function cancelTStudForm() {
+  document.getElementById('teacherStudentFormDiv').style.display = 'none';
+  tStudEditId = null;
+}
+function filterTStudList() { renderTStudList(); }
+async function initTeacherUI() {
+  document.getElementById('mainContainer').innerHTML = `
     <div class="management-panel" style="width:500px;max-width:100%;margin:0 auto;">
       <h2>👩‍🏫 Manage Students</h2>
       <div class="teacher-stats">
@@ -725,14 +1167,18 @@ async function initTeacherUI(){
         <label>Photo (max 60KB)</label><input type="file" id="tStudPhoto" accept="image/*">
         <div class="form-buttons"><button id="tSaveStudent">Save</button><button id="tCancelStudent" class="cancel-btn">Cancel</button></div>
       </div>
-    </div>`;
-  document.getElementById('teacherAddStudentBtn').onclick=()=>openTStudForm(null);
-  document.getElementById('tSaveStudent').onclick=saveTStudForm;
-  document.getElementById('tCancelStudent').onclick=cancelTStudForm;
-  document.getElementById('teacherRefreshBtn').onclick=refreshData;
+    </div>
+  `;
+  document.getElementById('teacherAddStudentBtn').onclick = () => openTStudForm(null);
+  document.getElementById('tSaveStudent').onclick = saveTStudForm;
+  document.getElementById('tCancelStudent').onclick = cancelTStudForm;
+  document.getElementById('teacherRefreshBtn').onclick = refreshData;
   document.getElementById('teacherDuplicatesContainer').style.display = 'none';
-  teacherSelectedClass=''; tStudSearch=''; filterTStudList();
+  teacherSelectedClass = '';
+  tStudSearch = '';
+  filterTStudList();
   updateTeacherStats('');
+  // Apply shape & color after a short delay
   setTimeout(() => {
     const sel = document.querySelector('.photo-shape-select');
     if (sel) sel.value = photoShape;
@@ -744,15 +1190,63 @@ async function initTeacherUI(){
 }
 
 // ============================== GLOBAL IMAGES & VIEW ==============================
-function applyStudentGlobal(){const bg=document.getElementById('bgPreview');const sig=document.getElementById('signaturePreview');if(bg)bg.src=globalBgImage||'';if(sig)sig.src=globalSignatureImage||'';}
-function applyTeacherGlobal(){const bg=document.getElementById('teacherBgPreview');const sig=document.getElementById('teacherSignaturePreview');if(bg)bg.src=globalTeacherBgImage||'';if(sig)sig.src=globalTeacherSignatureImage||'';}
-async function handleStudentBg(file){if(!file)return;showLoading(true);try{const d=await fileToBase64(file,2000);if(d){globalBgImage=d;await saveGlobalImages();applyStudentGlobal();}}catch(e){alert('Background too large');}finally{showLoading(false);}}
-async function handleStudentSig(file){if(!file)return;showLoading(true);try{const d=await fileToBase64(file,2000);if(d){globalSignatureImage=d;await saveGlobalImages();applyStudentGlobal();}}catch(e){alert('Signature too large');}finally{showLoading(false);}}
-async function handleTeacherBg(file){if(!file)return;showLoading(true);try{const d=await fileToBase64(file,2000);if(d){globalTeacherBgImage=d;await saveGlobalImages();applyTeacherGlobal();}}catch(e){alert('Background too large');}finally{showLoading(false);}}
-async function handleTeacherSig(file){if(!file)return;showLoading(true);try{const d=await fileToBase64(file,2000);if(d){globalTeacherSignatureImage=d;await saveGlobalImages();applyTeacherGlobal();}}catch(e){alert('Signature too large');}finally{showLoading(false);}}
+function applyStudentGlobal() {
+  const bg = document.getElementById('bgPreview');
+  const sig = document.getElementById('signaturePreview');
+  if (bg) bg.src = globalBgImage || '';
+  if (sig) sig.src = globalSignatureImage || '';
+}
+function applyTeacherGlobal() {
+  const bg = document.getElementById('teacherBgPreview');
+  const sig = document.getElementById('teacherSignaturePreview');
+  if (bg) bg.src = globalTeacherBgImage || '';
+  if (sig) sig.src = globalTeacherSignatureImage || '';
+}
+async function handleStudentBg(file) {
+  if (!file) return;
+  showLoading(true);
+  try { const d = await fileToBase64(file, 2000); if (d) { globalBgImage = d; await saveGlobalImages(); applyStudentGlobal(); } }
+  catch (e) { alert('Background too large'); } finally { showLoading(false); }
+}
+async function handleStudentSig(file) {
+  if (!file) return;
+  showLoading(true);
+  try { const d = await fileToBase64(file, 2000); if (d) { globalSignatureImage = d; await saveGlobalImages(); applyStudentGlobal(); } }
+  catch (e) { alert('Signature too large'); } finally { showLoading(false); }
+}
+async function handleTeacherBg(file) {
+  if (!file) return;
+  showLoading(true);
+  try { const d = await fileToBase64(file, 2000); if (d) { globalTeacherBgImage = d; await saveGlobalImages(); applyTeacherGlobal(); } }
+  catch (e) { alert('Background too large'); } finally { showLoading(false); }
+}
+async function handleTeacherSig(file) {
+  if (!file) return;
+  showLoading(true);
+  try { const d = await fileToBase64(file, 2000); if (d) { globalTeacherSignatureImage = d; await saveGlobalImages(); applyTeacherGlobal(); } }
+  catch (e) { alert('Signature too large'); } finally { showLoading(false); }
+}
 
-function viewStudentInfo(id){const s=students.find(s=>s.id===id);if(!s)return;document.getElementById('studentViewContent').innerHTML=`<div style="text-align:center;"><h3 style="color:#001B4E;">👤 Student Details</h3><div style="margin:15px auto; width:100px; height:100px; border-radius:50%; overflow:hidden; border:3px solid #001B4E;"><img src="${escapeHtml(s.photoImage||'')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"></div><div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div><div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div><div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div><div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div><div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div><div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div></div>`;document.getElementById('studentViewModal').style.display='flex';}
-function closeStudentView(){document.getElementById('studentViewModal').style.display='none';}
+function viewStudentInfo(id) {
+  const s = students.find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('studentViewContent').innerHTML = `
+    <div style="text-align:center;">
+      <h3 style="color:#001B4E;">👤 Student Details</h3>
+      <div style="margin:15px auto; width:100px; height:100px; border-radius:50%; overflow:hidden; border:3px solid #001B4E;">
+        <img src="${escapeHtml(s.photoImage || '')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+      </div>
+      <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+      <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+      <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+      <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+      <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+      <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+    </div>
+  `;
+  document.getElementById('studentViewModal').style.display = 'flex';
+}
+function closeStudentView() { document.getElementById('studentViewModal').style.display = 'none'; }
 
 // ============================== REFRESH ==============================
 async function refreshData() {
@@ -762,56 +1256,57 @@ async function refreshData() {
       updateAdminStats();
       if (currentAdminMode === 'student') {
         renderStudentList();
-        if (students.length && !students.find(s=>s.id===currentStudentId)) currentStudentId = students[0]?.id || null;
+        if (students.length && !students.find(s => s.id === currentStudentId)) currentStudentId = students[0]?.id || null;
         currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
       } else {
         renderTeacherList();
-        if (teachers.length && !teachers.find(t=>t.id===currentTeacherCardId)) currentTeacherCardId = teachers[0]?.id || null;
+        if (teachers.length && !teachers.find(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers[0]?.id || null;
         currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
       }
-      const shapeSelects = document.querySelectorAll('.photo-shape-select');
-      shapeSelects.forEach(sel => sel.value = photoShape);
-      const colorPickers = document.querySelectorAll('.text-color-picker');
-      colorPickers.forEach(p => p.value = globalTextColor);
+      document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
+      document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
       attachDragListeners();
       applyPhotoShapeToCards();
       applyTextColorToCards();
-      const adminDup = document.getElementById('adminDuplicatesContainer');
-      if (adminDup && adminDup.style.display === 'block') {
-        renderDuplicates('adminDuplicatesContainer');
-      }
+      const ad = document.getElementById('adminDuplicatesContainer');
+      if (ad && ad.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
     } else if (currentUser.role === 'teacher') {
       filterTStudList();
       updateTeacherStats(teacherSelectedClass);
-      const shapeSelects = document.querySelectorAll('.photo-shape-select');
-      shapeSelects.forEach(sel => sel.value = photoShape);
-      const colorPickers = document.querySelectorAll('.text-color-picker');
-      colorPickers.forEach(p => p.value = globalTextColor);
+      document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
+      document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
       applyPhotoShapeToCards();
       applyTextColorToCards();
-      const teacherDup = document.getElementById('teacherDuplicatesContainer');
-      if (teacherDup && teacherDup.style.display === 'block') {
-        renderDuplicates('teacherDuplicatesContainer');
-      }
+      const td = document.getElementById('teacherDuplicatesContainer');
+      if (td && td.style.display === 'block') renderDuplicates('teacherDuplicatesContainer');
     } else if (currentUser.role === 'student') {
-      const s = students.find(s=>s.id===currentUser.id);
+      const s = students.find(s => s.id === currentUser.id);
       if (s) {
-        document.getElementById('mainContainer').innerHTML = `<div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;"><h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>${s.photoImage?`<img src="${escapeHtml(s.photoImage)}" class="profile-photo">`:'<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}<div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div><div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div><div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div><div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div><div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div><div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div></div>`;
+        document.getElementById('mainContainer').innerHTML = `
+          <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
+            <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
+            ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
+            <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+            <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+            <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+            <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+            <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+            <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+          </div>
+        `;
       }
     }
     updateTopBarTitle();
   }
 }
 
-// ============================== SHAPE CHANGE ==============================
+// ============================== SHAPE & COLOR CHANGE ==============================
 async function handleShapeChange(newShape) {
   photoShape = newShape;
   await saveGlobalImages();
   applyPhotoShapeToCards();
   document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
 }
-
-// ============================== TEXT COLOR CHANGE ==============================
 async function handleTextColorChange(newColor) {
   globalTextColor = newColor;
   await saveGlobalImages();
@@ -820,13 +1315,63 @@ async function handleTextColorChange(newColor) {
 }
 
 // ============================== BACKUP ==============================
-function exportAllData(){const backup={students,teachers};const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='id_card_backup.json';a.click();}
-async function importBackup(file){const reader=new FileReader();reader.onload=async function(e){try{const data=JSON.parse(e.target.result);if(!data.students||!data.teachers)throw new Error('Invalid structure');showLoading(true);await Promise.all(students.map(s=>deleteStudentFromFB(s.id)));await Promise.all(teachers.map(t=>deleteTeacherFromFB(t.id)));students=[];teachers=[];for(const s of data.students){const added=await addStudentToFB(s);students.push(added);}for(const t of data.teachers){const added=await addTeacherToFB(t);teachers.push(added);}students.forEach(s => s._printSelected = false);alert('Backup imported!');if(currentUser?.role==='admin'){updateAdminStats();if(currentAdminMode==='student'){renderStudentList();if(students.length){currentStudentId=students[0].id;loadStudentToCard(currentStudentId);}else clearStudentCard();}else{renderTeacherList();if(teachers.length){currentTeacherCardId=teachers[0].id;loadTeacherToCard(currentTeacherCardId);}else clearTeacherCard();}}else if(currentUser?.role==='teacher'){filterTStudList();updateTeacherStats(teacherSelectedClass);}else if(currentUser?.role==='student'){location.reload();}}catch(err){alert('Error reading backup: '+err.message);}finally{showLoading(false);}};reader.readAsText(file);}
+function exportAllData() {
+  const backup = { students, teachers };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'id_card_backup.json';
+  a.click();
+}
+async function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.students || !data.teachers) throw new Error('Invalid structure');
+      showLoading(true);
+      await Promise.all(students.map(s => deleteStudentFromFB(s.id)));
+      await Promise.all(teachers.map(t => deleteTeacherFromFB(t.id)));
+      students = [];
+      teachers = [];
+      for (const s of data.students) { const added = await addStudentToFB(s); students.push(added); }
+      for (const t of data.teachers) { const added = await addTeacherToFB(t); teachers.push(added); }
+      students.forEach(s => s._printSelected = false);
+      alert('Backup imported!');
+      if (currentUser?.role === 'admin') {
+        updateAdminStats();
+        if (currentAdminMode === 'student') {
+          renderStudentList();
+          if (students.length) { currentStudentId = students[0].id; loadStudentToCard(currentStudentId); } else clearStudentCard();
+        } else {
+          renderTeacherList();
+          if (teachers.length) { currentTeacherCardId = teachers[0].id; loadTeacherToCard(currentTeacherCardId); } else clearTeacherCard();
+        }
+      } else if (currentUser?.role === 'teacher') {
+        filterTStudList();
+        updateTeacherStats(teacherSelectedClass);
+      } else if (currentUser?.role === 'student') {
+        location.reload();
+      }
+    } catch (err) { alert('Error reading backup: ' + err.message); } finally { showLoading(false); }
+  };
+  reader.readAsText(file);
+}
 
 // ============================== PASSWORD CHANGE ==============================
-function openChangePassword(){document.getElementById('changePasswordModal').style.display='flex';}
-function closeChangePassword(){document.getElementById('changePasswordModal').style.display='none';}
-async function savePassword(){const old=document.getElementById('oldPassword').value.trim();const newPass=document.getElementById('newPassword').value.trim();const err=document.getElementById('changePassError');if(!old||!newPass){err.innerText='Both fields required.';return;}if(old!==adminPassword){err.innerText='Old password incorrect.';return;}adminPassword=newPass;await saveAdminPassword();alert('Password changed!');closeChangePassword();}
+function openChangePassword() { document.getElementById('changePasswordModal').style.display = 'flex'; }
+function closeChangePassword() { document.getElementById('changePasswordModal').style.display = 'none'; }
+async function savePassword() {
+  const old = document.getElementById('oldPassword').value.trim();
+  const newPass = document.getElementById('newPassword').value.trim();
+  const err = document.getElementById('changePassError');
+  if (!old || !newPass) { err.innerText = 'Both fields required.'; return; }
+  if (old !== adminPassword) { err.innerText = 'Old password incorrect.'; return; }
+  adminPassword = newPass;
+  await saveAdminPassword();
+  alert('Password changed!');
+  closeChangePassword();
+}
 
 // ============================== PRINT PORTAL ==============================
 let printRefreshTimeout;
@@ -837,66 +1382,68 @@ function debouncePrintRefresh() {
       const anySelected = students.some(s => s._printSelected);
       if (anySelected) generatePrintSheet();
       else document.getElementById('printSheetContainer').innerHTML = '';
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error(e); }
   }, 300);
 }
-function openPrintPortal(){
-  document.getElementById('printPortalModal').style.display='flex';
-  const classFilter = document.getElementById('printClassFilter');
-  classFilter.innerHTML = getClassFilterOptions();
+function openPrintPortal() {
+  document.getElementById('printPortalModal').style.display = 'flex';
+  document.getElementById('printClassFilter').innerHTML = getClassFilterOptions();
   renderPrintStudentList();
   debouncePrintRefresh();
 }
-function closePrintPortal(){ document.getElementById('printPortalModal').style.display='none'; }
-function renderPrintStudentList(){
+function closePrintPortal() { document.getElementById('printPortalModal').style.display = 'none'; }
+function renderPrintStudentList() {
   const container = document.getElementById('printStudentList');
   const selectedClass = document.getElementById('printClassFilter').value;
   let filtered = students;
-  if(selectedClass) filtered = students.filter(s => s.class === selectedClass);
-  if(!filtered.length){ container.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
+  if (selectedClass) filtered = students.filter(s => s.class === selectedClass);
+  if (!filtered.length) { container.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
   container.innerHTML = filtered.map(s => `
     <div class="list-item">
       <label style="display:flex; align-items:center; gap:10px;">
         <input type="checkbox" class="print-check" value="${escapeHtml(s.id)}" ${s._printSelected ? 'checked' : ''}>
-        <span>${escapeHtml(s.name)} (${escapeHtml(s.class||'')})</span>
+        <span>${escapeHtml(s.name)} (${escapeHtml(s.class || '')})</span>
       </label>
-    </div>`).join('');
+    </div>
+  `).join('');
   container.querySelectorAll('.print-check').forEach(cb => {
-    const s = students.find(s => s.id === cb.value);
-    if(s) s._printSelected = cb.checked;
-    cb.addEventListener('change', function(){
-      const st = students.find(s => s.id === this.value);
-      if(st) st._printSelected = this.checked;
+    const s = students.find(st => st.id === cb.value);
+    if (s) s._printSelected = cb.checked;
+    cb.addEventListener('change', function() {
+      const st = students.find(st => st.id === this.value);
+      if (st) st._printSelected = this.checked;
       debouncePrintRefresh();
     });
   });
 }
 document.getElementById('printClassFilter')?.addEventListener('change', renderPrintStudentList);
-document.getElementById('selectAllPrint')?.addEventListener('click', ()=>{
-  document.querySelectorAll('.print-check').forEach(cb => { cb.checked = true; const s=students.find(s=>s.id===cb.value); if(s) s._printSelected=true; });
+document.getElementById('selectAllPrint')?.addEventListener('click', () => {
+  document.querySelectorAll('.print-check').forEach(cb => { cb.checked = true; const s = students.find(st => st.id === cb.value); if (s) s._printSelected = true; });
   debouncePrintRefresh();
 });
-document.getElementById('deselectAllPrint')?.addEventListener('click', ()=>{
-  document.querySelectorAll('.print-check').forEach(cb => { cb.checked = false; const s=students.find(s=>s.id===cb.value); if(s) s._printSelected=false; });
+document.getElementById('deselectAllPrint')?.addEventListener('click', () => {
+  document.querySelectorAll('.print-check').forEach(cb => { cb.checked = false; const s = students.find(st => st.id === cb.value); if (s) s._printSelected = false; });
   debouncePrintRefresh();
 });
 
-async function generatePrintSheet(){
+async function generatePrintSheet() {
   const selectedIds = students.filter(s => s._printSelected).map(s => s.id);
-  if(selectedIds.length === 0){ document.getElementById('printSheetContainer').innerHTML = ''; return; }
+  if (selectedIds.length === 0) { document.getElementById('printSheetContainer').innerHTML = ''; return; }
   const bgFile = document.getElementById('printBgUpload').files[0];
   const sigFile = document.getElementById('printSigUpload').files[0];
-  if(bgFile) { try { globalBgImage = await fileToBase64(bgFile, 2000); await saveGlobalImages(); } catch(e){ alert('Background too large'); return; } }
-  if(sigFile) { try { globalSignatureImage = await fileToBase64(sigFile, 2000); await saveGlobalImages(); } catch(e){ alert('Signature too large'); return; } }
+  if (bgFile) { try { globalBgImage = await fileToBase64(bgFile, 2000); await saveGlobalImages(); } catch (e) { alert('Background too large'); return; } }
+  if (sigFile) { try { globalSignatureImage = await fileToBase64(sigFile, 2000); await saveGlobalImages(); } catch (e) { alert('Signature too large'); return; } }
 
   const hiddenDiv = document.createElement('div');
-  hiddenDiv.style.position = 'absolute'; hiddenDiv.style.left = '-9999px'; hiddenDiv.style.top = '0';
+  hiddenDiv.style.position = 'absolute';
+  hiddenDiv.style.left = '-9999px';
+  hiddenDiv.style.top = '0';
   document.body.appendChild(hiddenDiv);
 
   const cardsPerSheet = 10;
   const sheets = [];
-  for(let i=0; i<selectedIds.length; i+=cardsPerSheet){
-    const batch = selectedIds.slice(i, i+cardsPerSheet);
+  for (let i = 0; i < selectedIds.length; i += cardsPerSheet) {
+    const batch = selectedIds.slice(i, i + cardsPerSheet);
     const sheetCanvas = document.createElement('canvas');
     const dpi = 300;
     const a4Width = 210, a4Height = 297;
@@ -911,10 +1458,10 @@ async function generatePrintSheet(){
     const cardWidthMM = 95, cardHeightMM = 58;
     const cardWidthPx = Math.round(cardWidthMM * mmToPx);
     const cardHeightPx = Math.round(cardHeightMM * mmToPx);
-    const marginX = Math.round((a4Width - cols * cardWidthMM) / (cols+1) * mmToPx);
-    const marginY = Math.round((a4Height - rows * cardHeightMM) / (rows+1) * mmToPx);
+    const marginX = Math.round((a4Width - cols * cardWidthMM) / (cols + 1) * mmToPx);
+    const marginY = Math.round((a4Height - rows * cardHeightMM) / (rows + 1) * mmToPx);
 
-    for(let j=0; j<batch.length; j++){
+    for (let j = 0; j < batch.length; j++) {
       const studentId = batch[j];
       const row = Math.floor(j / cols);
       const col = j % cols;
@@ -922,27 +1469,28 @@ async function generatePrintSheet(){
       const y = marginY + row * (cardHeightPx + marginY);
 
       const tempCard = document.createElement('div');
-      tempCard.style.width = '260px'; tempCard.style.height = '410px';
+      tempCard.style.width = '260px';
+      tempCard.style.height = '410px';
       tempCard.style.position = 'relative';
       tempCard.innerHTML = generateCardHTML(studentId);
       hiddenDiv.appendChild(tempCard);
-      const s = students.find(s=>s.id===studentId);
-      if(s && s.positions){
+      const s = students.find(st => st.id === studentId);
+      if (s && s.positions) {
         tempCard.querySelectorAll('.draggable').forEach(el => {
           const idAttr = el.getAttribute('data-id');
-          if(idAttr && s.positions[idAttr]){
+          if (idAttr && s.positions[idAttr]) {
             el.style.left = s.positions[idAttr].left;
             el.style.top = s.positions[idAttr].top;
           }
         });
       }
       const bgImg = tempCard.querySelector('.card-bg');
-      if(bgImg) bgImg.src = globalBgImage || '';
+      if (bgImg) bgImg.src = globalBgImage || '';
       const sigImg = tempCard.querySelector('.signature-box img');
-      if(sigImg) sigImg.src = globalSignatureImage || '';
+      if (sigImg) sigImg.src = globalSignatureImage || '';
 
       const photoBox = tempCard.querySelector('.photo-box');
-      if(photoBox) {
+      if (photoBox) {
         photoBox.classList.remove('photo-shape-circle', 'photo-shape-hexagon', 'photo-shape-diamond', 'photo-shape-pentagon', 'photo-shape-rounded');
         if (photoShape === 'circle') photoBox.classList.add('photo-shape-circle');
         else if (photoShape === 'hexagon') photoBox.classList.add('photo-shape-hexagon');
@@ -950,15 +1498,14 @@ async function generatePrintSheet(){
         else if (photoShape === 'pentagon') photoBox.classList.add('photo-shape-pentagon');
         else photoBox.classList.add('photo-shape-rounded');
       }
-
       tempCard.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
 
       const cardCanvas = await html2canvas(tempCard, { scale: 1, backgroundColor: '#ffffff' });
       hiddenDiv.removeChild(tempCard);
       ctx.save();
-      ctx.translate(x + cardWidthPx/2, y + cardHeightPx/2);
-      ctx.rotate(-90 * Math.PI/180);
-      ctx.drawImage(cardCanvas, -cardHeightPx/2, -cardWidthPx/2, cardHeightPx, cardWidthPx);
+      ctx.translate(x + cardWidthPx / 2, y + cardHeightPx / 2);
+      ctx.rotate(-90 * Math.PI / 180);
+      ctx.drawImage(cardCanvas, -cardHeightPx / 2, -cardWidthPx / 2, cardHeightPx, cardWidthPx);
       ctx.restore();
     }
     sheets.push(sheetCanvas.toDataURL('image/png'));
@@ -973,22 +1520,22 @@ async function generatePrintSheet(){
   `).join('');
 }
 
-function generateCardHTML(studentId){
-  const s = students.find(s=>s.id===studentId);
-  if(!s) return '';
+function generateCardHTML(studentId) {
+  const s = students.find(st => st.id === studentId);
+  if (!s) return '';
   return `
     <img class="card-bg" src="${escapeHtml(globalBgImage)}">
     <div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo">
-      <img src="${escapeHtml(s.photoImage||'')}" onerror="this.style.display='none'">
+      <img src="${escapeHtml(s.photoImage || '')}" onerror="this.style.display='none'">
     </div>
-    <div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name">${escapeHtml(s.name||'YOUR NAME')}</div>
+    <div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name">${escapeHtml(s.name || 'YOUR NAME')}</div>
     <div class="info draggable" data-original-left="20" data-original-top="265" data-id="info">
-      <div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value">${escapeHtml(s.class||'')}</div></div>
-      <div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value">${escapeHtml(s.roll||'')}</div></div>
-      <div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value">${escapeHtml(s.dob||'')}</div></div>
-      <div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value">${escapeHtml(s.father||'')}</div></div>
-      <div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value">${escapeHtml(s.contact||'')}</div></div>
-      <div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value">${escapeHtml(s.address||'')}</div></div>
+      <div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value">${escapeHtml(s.class || '')}</div></div>
+      <div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value">${escapeHtml(s.roll || '')}</div></div>
+      <div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value">${escapeHtml(s.dob || '')}</div></div>
+      <div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value">${escapeHtml(s.father || '')}</div></div>
+      <div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value">${escapeHtml(s.contact || '')}</div></div>
+      <div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value">${escapeHtml(s.address || '')}</div></div>
     </div>
     <div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature">
       <img src="${escapeHtml(globalSignatureImage)}">
@@ -1001,45 +1548,166 @@ function downloadPrintSheets() { window.print(); }
 
 // ============================== ROLE UI ==============================
 let currentAdminMode = 'student';
-function renderStudentModeHTML(){ return `<div class="management-panel"><h2>📚 Student Management</h2><div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;"><select id="adminStudentClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;" onchange="filterAdminStudentByClass()">${getClassFilterOptions()}</select><button id="adminShowDuplicatesBtn" style="background:#6f42c1; color:#fff; padding:8px 16px; border:none; border-radius:8px; cursor:pointer;" onclick="toggleAdminDuplicates()">🔍 Show Duplicates</button><button class="btn-auto-delete" onclick="autoDeleteDuplicates()">🗑️ Auto Delete Duplicates</button></div><div id="adminDuplicatesContainer" class="duplicates-container"></div><input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()"><div id="studentList" class="list-container"></div><button class="add-btn" id="addStudentBtn">+ Add New Student</button><div id="studentFormDiv" class="data-form" style="display:none;"><h3 id="formTitle">Add Student</h3><label>Name</label><input id="studentName"><label>Class</label><select id="studentClass">${getClassOptions()}</select><label>Roll</label><input id="studentRoll"><label>Date of Birth</label><input type="date" id="studentDob"><label>Gender</label><select id="studentGender"><option value="">--Select--</option><option>Male</option><option>Female</option></select><label>Father</label><input id="studentFather"><label>Contact</label><input id="studentContact"><label>Address</label><input id="studentAddress"><label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div></div></div><div class="card-area"><h3>🪪 Student ID Card</h3><div id="studentCard"><img id="bgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div><div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div><div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"><br><label>🖼️ Photo Shape:</label><select class="photo-shape-select" onchange="handleShapeChange(this.value)"><option value="rounded">Rounded Rectangle</option><option value="circle">Circle</option><option value="hexagon">Hexagon</option><option value="diamond">Diamond</option><option value="pentagon">Pentagon</option></select><br><label>🎨 Text Color:</label><input type="color" class="text-color-picker" value="${globalTextColor}" onchange="handleTextColorChange(this.value)"></div><div class="card-buttons"><button id="downloadBtn">⬇️ Download</button><button id="lockBtn">🔓 Unlock</button><button id="resetBtn">⟳ Reset Positions</button></div></div>`; }
-function renderTeacherModeHTML(){ return `<div class="management-panel"><h2>👩‍🏫 Teacher Management</h2><input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()"><div id="teacherList" class="list-container"></div><button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button><div id="teacherFormDiv" class="data-form" style="display:none;"><h3 id="teacherFormTitle">Add Teacher</h3><label>Name</label><input id="teacherName"><label>Father</label><input id="teacherFatherName"><label>Mobile</label><input id="teacherMobile"><label>Date of Birth</label><input type="date" id="teacherDob"><label>Designation</label><input id="teacherDesignation"><label>Address</label><input id="teacherAddress"><label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*"><div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div></div></div><div class="card-area"><h3>🪪 Teacher ID Card</h3><div id="teacherCard"><img id="teacherBgPreview" class="card-bg"><div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div><div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div><div class="info draggable" data-original-left="20" data-original-top="265" data-id="info"><div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div><div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div><div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div><div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div><div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div></div><div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div><div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div></div><div class="global-uploads"><label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*"><label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"><br><label>🖼️ Photo Shape:</label><select class="photo-shape-select" onchange="handleShapeChange(this.value)"><option value="rounded">Rounded Rectangle</option><option value="circle">Circle</option><option value="hexagon">Hexagon</option><option value="diamond">Diamond</option><option value="pentagon">Pentagon</option></select><br><label>🎨 Text Color:</label><input type="color" class="text-color-picker" value="${globalTextColor}" onchange="handleTextColorChange(this.value)"></div><div class="card-buttons"><button id="teacherDownloadBtn">⬇️ Download</button><button id="teacherLockBtn">🔓 Unlock</button><button id="teacherResetBtn">⟳ Reset Positions</button></div></div>`; }
-function switchAdminMode(mode){
+
+function renderStudentModeHTML() {
+  return `
+    <div class="management-panel">
+      <h2>📚 Student Management</h2>
+      <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <select id="adminStudentClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;" onchange="filterAdminStudentByClass()">${getClassFilterOptions()}</select>
+        <button id="adminShowDuplicatesBtn" style="background:#6f42c1; color:#fff; padding:8px 16px; border:none; border-radius:8px; cursor:pointer;" onclick="toggleAdminDuplicates()">🔍 Show Duplicates</button>
+        <button class="btn-auto-delete" onclick="autoDeleteDuplicates()">🗑️ Auto Delete Duplicates</button>
+      </div>
+      <div id="adminDuplicatesContainer" class="duplicates-container"></div>
+      <input id="studentSearch" class="search-box" placeholder="🔍 Search..." oninput="filterStudentList()">
+      <div id="studentList" class="list-container"></div>
+      <button class="add-btn" id="addStudentBtn">+ Add New Student</button>
+      <div id="studentFormDiv" class="data-form" style="display:none;">
+        <h3 id="formTitle">Add Student</h3>
+        <label>Name</label><input id="studentName">
+        <label>Class</label><select id="studentClass">${getClassOptions()}</select>
+        <label>Roll</label><input id="studentRoll">
+        <label>Date of Birth</label><input type="date" id="studentDob">
+        <label>Gender</label><select id="studentGender"><option value="">--Select--</option><option>Male</option><option>Female</option></select>
+        <label>Father</label><input id="studentFather">
+        <label>Contact</label><input id="studentContact">
+        <label>Address</label><input id="studentAddress">
+        <label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*">
+        <div class="form-buttons"><button id="saveStudentBtn">Save</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div>
+      </div>
+    </div>
+    <div class="card-area">
+      <h3>🪪 Student ID Card</h3>
+      <div id="studentCard">
+        <img id="bgPreview" class="card-bg">
+        <div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="photoPreview"></div>
+        <div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="showName">YOUR NAME</div>
+        <div class="info draggable" data-original-left="20" data-original-top="265" data-id="info">
+          <div class="row"><div class="label">CLASS & SECTION</div><div class="colon">:</div><div class="value" id="showClass"></div></div>
+          <div class="row"><div class="label">ROLL NO.</div><div class="colon">:</div><div class="value" id="showRoll"></div></div>
+          <div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="showDob"></div></div>
+          <div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="showFather"></div></div>
+          <div class="row"><div class="label">CONTACT NO.</div><div class="colon">:</div><div class="value" id="showContact"></div></div>
+          <div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="showAddress"></div></div>
+        </div>
+        <div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div>
+        <div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div>
+      </div>
+      <div class="global-uploads">
+        <label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*">
+        <label>🖊️ Signature:</label><input type="file" id="globalSigUpload" accept="image/*"><br>
+        <label>🖼️ Photo Shape:</label><select class="photo-shape-select" onchange="handleShapeChange(this.value)">
+          <option value="rounded">Rounded Rectangle</option>
+          <option value="circle">Circle</option>
+          <option value="hexagon">Hexagon</option>
+          <option value="diamond">Diamond</option>
+          <option value="pentagon">Pentagon</option>
+        </select><br>
+        <label>🎨 Text Color:</label><input type="color" class="text-color-picker" value="${globalTextColor}" onchange="handleTextColorChange(this.value)">
+      </div>
+      <div class="card-buttons">
+        <button id="downloadBtn">⬇️ Download</button>
+        <button id="lockBtn">🔓 Unlock</button>
+        <button id="resetBtn">⟳ Reset Positions</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTeacherModeHTML() {
+  return `
+    <div class="management-panel">
+      <h2>👩‍🏫 Teacher Management</h2>
+      <input id="teacherSearch" class="search-box" placeholder="🔍 Search..." oninput="filterTeacherList()">
+      <div id="teacherList" class="list-container"></div>
+      <button class="add-btn" id="addTeacherBtn">+ Add New Teacher</button>
+      <div id="teacherFormDiv" class="data-form" style="display:none;">
+        <h3 id="teacherFormTitle">Add Teacher</h3>
+        <label>Name</label><input id="teacherName">
+        <label>Father</label><input id="teacherFatherName">
+        <label>Mobile</label><input id="teacherMobile">
+        <label>Date of Birth</label><input type="date" id="teacherDob">
+        <label>Designation</label><input id="teacherDesignation">
+        <label>Address</label><input id="teacherAddress">
+        <label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*">
+        <div class="form-buttons"><button id="saveTeacherBtn">Save</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div>
+      </div>
+    </div>
+    <div class="card-area">
+      <h3>🪪 Teacher ID Card</h3>
+      <div id="teacherCard">
+        <img id="teacherBgPreview" class="card-bg">
+        <div class="photo-box draggable" data-original-left="94" data-original-top="132" data-id="photo"><img id="tPhotoPreview"></div>
+        <div class="name-bar draggable" data-original-left="45" data-original-top="235" data-id="name" id="tShowName">TEACHER NAME</div>
+        <div class="info draggable" data-original-left="20" data-original-top="265" data-id="info">
+          <div class="row"><div class="label">DESIGNATION</div><div class="colon">:</div><div class="value" id="tShowDesignation"></div></div>
+          <div class="row"><div class="label">FATHER'S NAME</div><div class="colon">:</div><div class="value" id="tShowFather"></div></div>
+          <div class="row"><div class="label">MOBILE NO.</div><div class="colon">:</div><div class="value" id="tShowMobile"></div></div>
+          <div class="row"><div class="label">DATE OF BIRTH</div><div class="colon">:</div><div class="value" id="tShowDob"></div></div>
+          <div class="row address-row"><div class="label address-label">ADDRESS</div><div class="colon">:</div><div class="value address-value" id="tShowAddress"></div></div>
+        </div>
+        <div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div>
+        <div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div>
+      </div>
+      <div class="global-uploads">
+        <label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*">
+        <label>🖊️ Signature:</label><input type="file" id="teacherSigUpload" accept="image/*"><br>
+        <label>🖼️ Photo Shape:</label><select class="photo-shape-select" onchange="handleShapeChange(this.value)">
+          <option value="rounded">Rounded Rectangle</option>
+          <option value="circle">Circle</option>
+          <option value="hexagon">Hexagon</option>
+          <option value="diamond">Diamond</option>
+          <option value="pentagon">Pentagon</option>
+        </select><br>
+        <label>🎨 Text Color:</label><input type="color" class="text-color-picker" value="${globalTextColor}" onchange="handleTextColorChange(this.value)">
+      </div>
+      <div class="card-buttons">
+        <button id="teacherDownloadBtn">⬇️ Download</button>
+        <button id="teacherLockBtn">🔓 Unlock</button>
+        <button id="teacherResetBtn">⟳ Reset Positions</button>
+      </div>
+    </div>
+  `;
+}
+
+function switchAdminMode(mode) {
   currentAdminMode = mode;
-  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`mode-${mode}`)?.classList.add('active');
-  const container=document.getElementById('mainContainer');
-  if(mode==='student'){
-    container.innerHTML=renderStudentModeHTML();
-    document.getElementById('addStudentBtn').onclick=()=>openStudentForm(null);
-    document.getElementById('saveStudentBtn').onclick=saveStudentForm;
-    document.getElementById('cancelStudentBtn').onclick=cancelStudentForm;
-    document.getElementById('downloadBtn').onclick=downloadStudentCard;
-    document.getElementById('lockBtn').onclick=toggleStudentLock;
-    document.getElementById('resetBtn').onclick=resetStudentPos;
-    document.getElementById('globalBgUpload').onchange=e=>handleStudentBg(e.target.files[0]);
-    document.getElementById('globalSigUpload').onchange=e=>handleStudentSig(e.target.files[0]);
+  const container = document.getElementById('mainContainer');
+
+  if (mode === 'student') {
+    container.innerHTML = renderStudentModeHTML();
+    document.getElementById('addStudentBtn').onclick = () => openStudentForm(null);
+    document.getElementById('saveStudentBtn').onclick = saveStudentForm;
+    document.getElementById('cancelStudentBtn').onclick = cancelStudentForm;
+    document.getElementById('downloadBtn').onclick = downloadStudentCard;
+    document.getElementById('lockBtn').onclick = toggleStudentLock;
+    document.getElementById('resetBtn').onclick = resetStudentPos;
+    document.getElementById('globalBgUpload').onchange = e => handleStudentBg(e.target.files[0]);
+    document.getElementById('globalSigUpload').onchange = e => handleStudentSig(e.target.files[0]);
     document.getElementById('adminDuplicatesContainer').style.display = 'none';
     renderStudentList();
-    if(students.length && !students.find(s=>s.id===currentStudentId)) currentStudentId=students[0].id;
-    currentStudentId?loadStudentToCard(currentStudentId):clearStudentCard();
+    if (students.length && !students.find(s => s.id === currentStudentId)) currentStudentId = students[0].id;
+    currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
     document.querySelector('.photo-shape-select').value = photoShape;
     document.querySelector('.text-color-picker').value = globalTextColor;
     attachDragListeners();
     applyPhotoShapeToCards();
     applyTextColorToCards();
-  }else{
-    container.innerHTML=renderTeacherModeHTML();
-    document.getElementById('addTeacherBtn').onclick=()=>openTeacherForm(null);
-    document.getElementById('saveTeacherBtn').onclick=saveTeacherForm;
-    document.getElementById('cancelTeacherBtn').onclick=cancelTeacherForm;
-    document.getElementById('teacherDownloadBtn').onclick=downloadTeacherCard;
-    document.getElementById('teacherLockBtn').onclick=toggleTeacherLock;
-    document.getElementById('teacherResetBtn').onclick=resetTeacherPos;
-    document.getElementById('teacherBgUpload').onchange=e=>handleTeacherBg(e.target.files[0]);
-    document.getElementById('teacherSigUpload').onchange=e=>handleTeacherSig(e.target.files[0]);
+  } else {
+    container.innerHTML = renderTeacherModeHTML();
+    document.getElementById('addTeacherBtn').onclick = () => openTeacherForm(null);
+    document.getElementById('saveTeacherBtn').onclick = saveTeacherForm;
+    document.getElementById('cancelTeacherBtn').onclick = cancelTeacherForm;
+    document.getElementById('teacherDownloadBtn').onclick = downloadTeacherCard;
+    document.getElementById('teacherLockBtn').onclick = toggleTeacherLock;
+    document.getElementById('teacherResetBtn').onclick = resetTeacherPos;
+    document.getElementById('teacherBgUpload').onchange = e => handleTeacherBg(e.target.files[0]);
+    document.getElementById('teacherSigUpload').onchange = e => handleTeacherSig(e.target.files[0]);
     renderTeacherList();
-    if(teachers.length && !teachers.find(t=>t.id===currentTeacherCardId)) currentTeacherCardId=teachers[0].id;
-    currentTeacherCardId?loadTeacherToCard(currentTeacherCardId):clearTeacherCard();
+    if (teachers.length && !teachers.find(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers[0].id;
+    currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
     document.querySelector('.photo-shape-select').value = photoShape;
     document.querySelector('.text-color-picker').value = globalTextColor;
     attachDragListeners();
@@ -1047,34 +1715,48 @@ function switchAdminMode(mode){
     applyTextColorToCards();
   }
 }
-function renderModeToggle(){ return `<button class="mode-btn active" id="mode-student" onclick="switchAdminMode('student')">📚 Student Mode</button><button class="mode-btn" id="mode-teacher" onclick="switchAdminMode('teacher')">👩‍🏫 Teacher Mode</button>`; }
-function initRoleUI(){
-  const toggle=document.getElementById('modeToggle');
-  const backupPanel=document.getElementById('backupPanel');
-  const statsRow=document.getElementById('adminStatsRow');
+
+function renderModeToggle() {
+  return `
+    <button class="mode-btn active" id="mode-student" onclick="switchAdminMode('student')">📚 Student Mode</button>
+    <button class="mode-btn" id="mode-teacher" onclick="switchAdminMode('teacher')">👩‍🏫 Teacher Mode</button>
+  `;
+}
+
+function initRoleUI() {
+  const toggle = document.getElementById('modeToggle');
+  const backupPanel = document.getElementById('backupPanel');
+  const statsRow = document.getElementById('adminStatsRow');
   const banner = document.getElementById('schoolBanner');
 
-  if(currentUser.role==='student'){
-    toggle.innerHTML=''; backupPanel.style.display='none'; statsRow.style.display='none';
+  if (currentUser.role === 'student') {
+    toggle.innerHTML = '';
+    backupPanel.style.display = 'none';
+    statsRow.style.display = 'none';
     banner.style.display = 'none';
-    const s=students.find(s=>s.id===currentUser.id);
-    document.getElementById('mainContainer').innerHTML=s?`<div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;"><h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>${s.photoImage?`<img src="${escapeHtml(s.photoImage)}" class="profile-photo">`:'<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}<div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div><div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div><div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div><div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div><div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div><div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div></div>`:'<div class="profile-card">Student not found.</div>';
-  }else if(currentUser.role==='teacher'){
-    toggle.innerHTML=''; backupPanel.style.display='none'; statsRow.style.display='none';
+    const s = students.find(st => st.id === currentUser.id);
+    document.getElementById('mainContainer').innerHTML = s ? `
+      <div class="profile-card" style="max-width:400px;margin:0 auto;background:#fff;border-radius:20px;padding:25px;">
+        <h2 style="text-align:center;color:#001B4E;">👤 My Profile</h2>
+        ${s.photoImage ? `<img src="${escapeHtml(s.photoImage)}" class="profile-photo">` : '<div style="width:120px;height:120px;border-radius:50%;background:#ccc;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;">📷</div>'}
+        <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(s.name)}</div></div>
+        <div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(s.class)}</div></div>
+        <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(s.roll)}</div></div>
+        <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
+        <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
+        <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+      </div>
+    ` : '<div class="profile-card">Student not found.</div>';
+  } else if (currentUser.role === 'teacher') {
+    toggle.innerHTML = '';
+    backupPanel.style.display = 'none';
+    statsRow.style.display = 'none';
     banner.style.display = 'block';
     initTeacherUI();
-    setTimeout(() => {
-      const sel = document.querySelector('.photo-shape-select');
-      if (sel) sel.value = photoShape;
-      const colorPicker = document.querySelector('.text-color-picker');
-      if (colorPicker) colorPicker.value = globalTextColor;
-      applyPhotoShapeToCards();
-      applyTextColorToCards();
-    }, 100);
-  }else{
-    toggle.innerHTML=renderModeToggle();
-    backupPanel.style.display='block';
-    statsRow.style.display='flex';
+  } else { // admin
+    toggle.innerHTML = renderModeToggle();
+    backupPanel.style.display = 'block';
+    statsRow.style.display = 'flex';
     banner.style.display = 'block';
     updateAdminStats();
     switchAdminMode('student');
@@ -1082,53 +1764,86 @@ function initRoleUI(){
 }
 
 // ============================== LOGIN ==============================
-function doLogin(){
-  const role=document.getElementById('loginRole').value;
-  const mobileOrUser=document.getElementById('loginMobile').value.trim();
-  const dobOrPass=document.getElementById('loginDob').value.trim();
-  const err=document.getElementById('loginError'); err.innerText='';
-  if(role==='student'){
-    const inputDob=normalizeDateToYMD(dobOrPass);
-    const s=students.find(s=>normalizeDateToYMD(s.dob)===inputDob && s.mobile===mobileOrUser);
-    if(s){ currentUser={role:'student',id:s.id,name:s.name}; showApp(); }
-    else err.innerText='Invalid mobile or DOB';
-  }else if(role==='teacher'){
-    let inputDob=dobOrPass;
-    if(inputDob.includes('/')) inputDob=normalizeDateToYMD(inputDob);
-    const t=teachers.find(t=>normalizeDateToYMD(t.dob)===inputDob && t.mobile===mobileOrUser);
-    if(t){ currentUser={role:'teacher',id:t.id,name:t.name}; showApp(); }
-    else err.innerText='Invalid teacher credentials';
-  }else if(role==='admin'){
-    if(mobileOrUser==='admin' && dobOrPass===adminPassword){ currentUser={role:'admin',name:'Admin'}; showApp(); }
-    else err.innerText='Invalid admin credentials';
+function doLogin() {
+  const role = document.getElementById('loginRole').value;
+  const mobileOrUser = document.getElementById('loginMobile').value.trim();
+  const dobOrPass = document.getElementById('loginDob').value.trim();
+  const err = document.getElementById('loginError');
+  err.innerText = '';
+
+  if (role === 'student') {
+    const inputDob = normalizeDateToYMD(dobOrPass);
+    const s = students.find(st => normalizeDateToYMD(st.dob) === inputDob && st.mobile === mobileOrUser);
+    if (s) {
+      currentUser = { role: 'student', id: s.id, name: s.name };
+      showApp();
+    } else err.innerText = 'Invalid mobile or DOB';
+  } else if (role === 'teacher') {
+    let inputDob = dobOrPass;
+    if (inputDob.includes('/')) inputDob = normalizeDateToYMD(inputDob);
+    const t = teachers.find(tc => normalizeDateToYMD(tc.dob) === inputDob && tc.mobile === mobileOrUser);
+    if (t) {
+      currentUser = { role: 'teacher', id: t.id, name: t.name };
+      showApp();
+    } else err.innerText = 'Invalid teacher credentials';
+  } else if (role === 'admin') {
+    if (mobileOrUser === 'admin' && dobOrPass === adminPassword) {
+      currentUser = { role: 'admin', name: 'Admin' };
+      showApp();
+    } else err.innerText = 'Invalid admin credentials';
   }
 }
-async function showApp(){
-  document.getElementById('loginContainer').style.display='none';
-  document.getElementById('mainApp').style.display='block';
+
+async function showApp() {
+  document.getElementById('loginContainer').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
   await loadDataFromFirebase();
   updateTopBarTitle();
   initRoleUI();
 }
-function logout(){ currentUser=null; document.getElementById('mainApp').style.display='none'; document.getElementById('loginContainer').style.display='flex'; document.getElementById('loginMobile').value=''; document.getElementById('loginDob').value=''; }
-function updateTopBarTitle(){
-  const titleEl=document.getElementById('topBarTitle');
-  if(!titleEl||!currentUser)return;
-  let photoUrl='';
-  if(currentUser.role==='teacher'){ const t=teachers.find(t=>t.id===currentUser.id); photoUrl=t?t.photo||'':''; titleEl.innerHTML=`<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👩‍🏫 Welcome, ${escapeHtml(currentUser.name)}`; }
-  else if(currentUser.role==='student'){ const s=students.find(s=>s.id===currentUser.id); photoUrl=s?s.photoImage||'':''; titleEl.innerHTML=`<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👨‍🎓 Welcome, ${escapeHtml(currentUser.name)}`; }
-  else{ titleEl.innerHTML='📇 ID Card Management System'; }
+
+function logout() {
+  currentUser = null;
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginContainer').style.display = 'flex';
+  document.getElementById('loginMobile').value = '';
+  document.getElementById('loginDob').value = '';
 }
 
+function updateTopBarTitle() {
+  const titleEl = document.getElementById('topBarTitle');
+  if (!titleEl || !currentUser) return;
+  let photoUrl = '';
+  if (currentUser.role === 'teacher') {
+    const t = teachers.find(tc => tc.id === currentUser.id);
+    photoUrl = t ? t.photo || '' : '';
+    titleEl.innerHTML = `<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👩‍🏫 Welcome, ${escapeHtml(currentUser.name)}`;
+  } else if (currentUser.role === 'student') {
+    const s = students.find(st => st.id === currentUser.id);
+    photoUrl = s ? s.photoImage || '' : '';
+    titleEl.innerHTML = `<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👨‍🎓 Welcome, ${escapeHtml(currentUser.name)}`;
+  } else {
+    titleEl.innerHTML = '📇 ID Card Management System';
+  }
+}
+
+// ============================== INIT ==============================
+// Wait for DOM to load, then load data and show login
+(async function init() {
+  await loadDataFromFirebase();
+  document.getElementById('loginContainer').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+})();
+
 // ============================== EVENT LISTENERS ==============================
-document.getElementById('loginRole').addEventListener('change', function(){
-  const dobInput=document.getElementById('loginDob');
-  if(this.value==='admin') dobInput.placeholder='Password';
-  else dobInput.placeholder='Date of Birth (DD/MM/YYYY)';
+document.getElementById('loginRole').addEventListener('change', function() {
+  const dobInput = document.getElementById('loginDob');
+  if (this.value === 'admin') dobInput.placeholder = 'Password';
+  else dobInput.placeholder = 'Date of Birth (DD/MM/YYYY)';
 });
 document.getElementById('exportBackupBtn')?.addEventListener('click', exportAllData);
-document.getElementById('importBackupBtn')?.addEventListener('click', ()=>document.getElementById('importBackupFile').click());
-document.getElementById('importBackupFile')?.addEventListener('change', (e)=>{ if(e.target.files[0]) importBackup(e.target.files[0]); });
+document.getElementById('importBackupBtn')?.addEventListener('click', () => document.getElementById('importBackupFile').click());
+document.getElementById('importBackupFile')?.addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]); });
 document.getElementById('changePasswordBtn')?.addEventListener('click', openChangePassword);
 document.getElementById('savePasswordBtn')?.addEventListener('click', savePassword);
 document.getElementById('loginBtn').addEventListener('click', doLogin);
@@ -1137,9 +1852,6 @@ document.getElementById('printPortalBtn')?.addEventListener('click', openPrintPo
 document.getElementById('downloadPrintSheetBtn')?.addEventListener('click', downloadPrintSheets);
 document.getElementById('refreshAdminBtn')?.addEventListener('click', refreshData);
 document.getElementById('refreshTopBtn')?.addEventListener('click', refreshData);
-
-document.getElementById('loginContainer').style.display='flex';
-document.getElementById('mainApp').style.display='none';
 </script>
 </body>
 </html>
