@@ -4,16 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ID Card System - QR Login</title>
-  
+
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- QR & Scanner Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
+
+  <!-- html2canvas for card download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <style>
     /* ===== RESET & GLOBAL ===== */
     * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
@@ -23,11 +25,11 @@
     .login-box h2 { color:#001B4E; margin-bottom:20px; }
     .login-box select, .login-box input { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:1px solid #ccc; }
     .login-box button { width:100%; padding:12px; background:#001B4E; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px; }
-    .login-box .qr-login-btn { background:#28a745; }
+    .login-box .qr-login-btn { background:#28a745; font-size:18px; }
     .login-box .qr-login-btn:hover { background:#218838; }
     .login-box .toggle-link { color:#001B4E; text-decoration:underline; font-size:12px; cursor:pointer; display:inline-block; margin-top:10px; }
     .error-msg { color:red; margin-top:10px; font-size:13px; }
-    .login-qr-reader { width:100%; max-width:320px; margin:10px auto; border-radius:10px; overflow:hidden; }
+    .login-qr-reader { width:100%; max-width:400px; margin:10px auto; border-radius:10px; overflow:hidden; }
     .login-qr-reader video { width:100%; display:block; }
     .main-app { display:none; }
 
@@ -39,14 +41,13 @@
     .logout-btn { background:#dc3545; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
     .scan-btn { background:#28a745; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
     .scan-btn:hover { background:#218838; }
-
-    /* Connection status light */
-    #connectionStatus { display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle; transition: background 0.3s; }
+    .profile-btn { background:#6f42c1; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
+    .profile-btn:hover { background:#5a32a3; }
 
     /* ===== BANNER ===== */
     .school-banner {
       background:#001B4E; color:#FFD700; padding:12px 0; overflow:hidden; white-space:nowrap;
-      font-size:3rem; font-weight:bold; text-transform:uppercase; letter-spacing:2px;
+      font-size:2.5rem; font-weight:bold; text-transform:uppercase; letter-spacing:2px;
       border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1);
       display:none;
     }
@@ -106,13 +107,19 @@
     .card-area h3 { color:#001B4E; margin-bottom:15px; }
     #studentCard, #teacherCard { position:relative; width:260px; height:410px; background:#fff; overflow:hidden; border-radius:14px; border:2px solid #001B4E; box-shadow:0 5px 15px rgba(0,0,0,0.2); }
     .card-bg { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; }
-    .photo-box { width:72px; height:90px; border-radius:10px; overflow:hidden; background:#eee; position:absolute; left:94px; top:132px; z-index:3; border:2px solid #E3A81C; cursor:move; }
+
+    /* PHOTO BOX - FIXED BORDER ISSUE */
+    .photo-box {
+      width:72px; height:90px; border-radius:10px; overflow:hidden; background:#eee;
+      position:absolute; left:94px; top:132px; z-index:3; border:2px solid #E3A81C;
+      cursor:move; transition: border-radius 0.2s ease;
+    }
     .photo-box img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
-    .photo-shape-circle { clip-path:circle(50%); border-radius:0; }
-    .photo-shape-hexagon { clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius:0; }
-    .photo-shape-diamond { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius:0; }
-    .photo-shape-pentagon { clip-path:polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%); border-radius:0; }
-    .photo-shape-rounded { clip-path:none; border-radius:10px; }
+    .photo-shape-circle { clip-path:circle(50%); border-radius:0; border:2px solid #E3A81C; }
+    .photo-shape-hexagon { clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius:0; border:2px solid #E3A81C; }
+    .photo-shape-diamond { clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius:0; border:2px solid #E3A81C; }
+    .photo-shape-pentagon { clip-path:polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%); border-radius:0; border:2px solid #E3A81C; }
+    .photo-shape-rounded { clip-path:none; border-radius:10px; border:2px solid #E3A81C; }
 
     .name-bar { width:170px; height:20px; background:linear-gradient(135deg,#001B4E,#0A2E73); border-radius:5px; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10px; position:absolute; left:45px; top:235px; z-index:3; cursor:move; text-transform:uppercase; padding:0 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .info { width:220px; background:rgba(255,255,255,0.97); border:1.5px solid #D9A520; border-radius:8px; padding:5px; position:absolute; left:20px; top:265px; z-index:3; font-size:7px; cursor:move; }
@@ -126,8 +133,16 @@
     .signature-box { position:absolute; left:175px; top:355px; z-index:5; cursor:move; }
     .signature-box img { width:70px; height:auto; display:block; mix-blend-mode:multiply; pointer-events:none; }
     .principal-text { position:absolute; left:185px; top:392px; font-size:8px; font-weight:bold; color:#001B4E; z-index:5; cursor:move; }
-    .qr-code-box { position:absolute; width:55px; height:55px; left:20px; top:355px; z-index:5; cursor:move; background:#fff; border-radius:4px; box-shadow:0 1px 4px rgba(0,0,0,0.1); padding:2px; }
-    .qr-code-box canvas, .qr-code-box img { width:100% !important; height:100% !important; }
+
+    /* QR CODE BOX - SMALL SIZE (52x52) */
+    .qr-code-box {
+      position:absolute; width:56px; height:56px; left:20px; top:355px; z-index:5; cursor:move;
+      background:#fff; border-radius:4px; box-shadow:0 1px 4px rgba(0,0,0,0.1); padding:2px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .qr-code-box canvas, .qr-code-box img {
+      width:100% !important; height:100% !important; max-width:52px !important; max-height:52px !important;
+    }
     .draggable { cursor:move; user-select:none; }
     .dragging { opacity:0.7; outline:2px dashed #E3A81C; }
     .card-buttons { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
@@ -153,8 +168,8 @@
     .modal-close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; color:#001B4E; }
     .loading-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:3000; display:none; }
     .loading-spinner { background:white; padding:20px; border-radius:10px; font-weight:bold; }
-    #qr-reader { width: 100%; max-width: 500px; margin: 0 auto; }
-    #qr-reader video { width: 100%; max-width: 500px; border-radius: 10px; }
+    #qr-reader { width:100%; max-width:500px; margin:0 auto; }
+    #qr-reader video { width:100%; max-width:500px; border-radius:10px; }
 
     /* ===== PRINT SHEET ===== */
     .print-sheet { display:block; background:white; margin:10px auto; border:1px solid #ccc; max-width:100%; height:auto; box-shadow:0 0 10px rgba(0,0,0,0.1); }
@@ -167,8 +182,9 @@
     .info-row { display:flex; padding:8px 0; border-bottom:1px solid #e2e8f0; }
     .info-label { font-weight:bold; width:130px; color:#1e293b; }
     .info-value { flex:1; color:#0f172a; }
+    .qr-scanner-hint { background:#f8f9fa; border-radius:10px; padding:10px; margin:10px 0; text-align:center; color:#555; font-size:13px; }
 
-    @media (max-width:768px) { .school-banner { font-size:2rem; } }
+    @media (max-width:768px) { .school-banner { font-size:1.8rem; } }
   </style>
 </head>
 <body>
@@ -220,6 +236,7 @@
   <div class="top-bar">
     <h1 id="topBarTitle">📇 ID Card System</h1>
     <div class="right-btns">
+      <button class="profile-btn" id="profileBtn">👤 Profile</button>
       <button class="scan-btn" id="scanQrBtn">📷 Scan QR</button>
       <button class="refresh-btn" id="refreshTopBtn" style="margin-right:10px;">🔄 Refresh</button>
       <span id="connectionStatus" style="display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle;" title="Checking connection..."></span>
@@ -229,9 +246,7 @@
 
   <!-- School Banner -->
   <div class="school-banner" id="schoolBanner">
-    <span class="marquee-track">
-      MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp;
-    </span>
+    <span class="marquee-track">MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM</span>
   </div>
 
   <!-- Admin Backup Panel -->
@@ -266,12 +281,21 @@
 </div>
 
 <!-- ===== MODALS ===== -->
+<!-- Profile Modal (Student & Teacher) -->
+<div id="profileModal" class="modal">
+  <div class="modal-content" style="max-width:500px;">
+    <span class="modal-close" onclick="closeProfileModal()">&times;</span>
+    <div id="profileContent"></div>
+  </div>
+</div>
+
 <!-- QR Scanner Modal (Post-Login) -->
 <div id="qrScannerModal" class="modal">
   <div class="modal-content" style="max-width:600px;">
     <span class="modal-close" onclick="closeQrScanner()">&times;</span>
     <h3 style="color:#001B4E; text-align:center;">📷 Scan QR</h3>
-    <p style="text-align:center; color:#555; margin-bottom:15px;">Hold the ID card in front of the camera.</p>
+    <p style="text-align:center; color:#555; margin-bottom:15px;">Hold the ID card in front of the camera. Keep it steady.</p>
+    <div class="qr-scanner-hint">💡 Ensure good lighting and hold the card about 10-15 cm away</div>
     <div id="qr-reader"></div>
     <div id="qrScannerError" style="color:red; text-align:center; margin-top:10px;"></div>
     <button onclick="closeQrScanner()" style="width:100%; padding:10px; margin-top:15px; background:#6c757d; color:#fff; border:none; border-radius:10px; cursor:pointer;">Close Scanner</button>
@@ -429,19 +453,35 @@ function populateSchoolDropdowns() {
   }
 }
 
-// ============================== QR CODE FUNCTIONS ==============================
+// ============================== BANNER UPDATE ==============================
+function updateBanner() {
+  const banner = document.getElementById('schoolBanner');
+  if (!banner) return;
+  const track = banner.querySelector('.marquee-track');
+  if (!track) return;
+
+  let displayText = 'MULTI-SCHOOL ID CARD SYSTEM';
+  if (currentUser && currentUser.school) {
+    const schoolName = getSchoolName(currentUser.school);
+    if (schoolName && schoolName !== 'Not Assigned') {
+      displayText = schoolName;
+    }
+  }
+  track.innerHTML = displayText + ' &nbsp;&nbsp;&nbsp; ' + displayText + ' &nbsp;&nbsp;&nbsp; ' + displayText;
+}
+
+// ============================== QR CODE GENERATION ==============================
 function generateQR(elementId, userId, schoolCode) {
   const container = document.getElementById(elementId);
   if (!container) return;
   container.innerHTML = '';
   if (!userId) return;
-  
   const data = JSON.stringify({ id: userId, school: schoolCode || '' });
   try {
     new QRCode(container, {
       text: data,
-      width: 51,
-      height: 51,
+      width: 52,
+      height: 52,
       colorDark: "#001B4E",
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.H
@@ -457,21 +497,26 @@ function openQrScanner() {
   const readerContainer = document.getElementById('qr-reader');
   readerContainer.innerHTML = '';
   document.getElementById('qrScannerError').innerText = '';
-  
+
   if (typeof Html5Qrcode === "undefined") {
-    document.getElementById('qrScannerError').innerText = 'QR Scanner library not loaded.';
+    document.getElementById('qrScannerError').innerText = 'QR Scanner library not loaded. Please check internet connection.';
     return;
   }
 
   html5QrCode = new Html5Qrcode("qr-reader");
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-  
+  const config = {
+    fps: 30,
+    qrbox: { width: 300, height: 300 },
+    aspectRatio: 1.0,
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+  };
+
   html5QrCode.start(
-    { facingMode: "environment" },
+    { facingMode: "environment", focusMode: "continuous", zoom: 1.0 },
     config,
     function(decodedText) {
       if (html5QrCode) {
-        html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(() => {});
+        html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
       }
       try {
         const data = JSON.parse(decodedText);
@@ -494,16 +539,22 @@ function openQrScanner() {
             }).catch(() => {
               document.getElementById('qrScannerError').innerText = 'Error fetching student.';
             });
-            return;
           }
         } else {
-          document.getElementById('qrScannerError').innerText = 'Invalid QR code.';
+          document.getElementById('qrScannerError').innerText = 'Invalid QR code format.';
         }
       } catch (e) {
-        document.getElementById('qrScannerError').innerText = 'Failed to parse QR.';
+        document.getElementById('qrScannerError').innerText = 'Failed to parse QR. Please try again.';
+        // Auto-retry after error
+        setTimeout(() => {
+          if (html5QrCode) {
+            html5QrCode.start({ facingMode: "environment", focusMode: "continuous" }, config,
+              function(text) {}, function(err) {});
+          }
+        }, 1500);
       }
     },
-    function(err) {}
+    function(err) { /* ignore scanning errors */ }
   ).catch(err => {
     document.getElementById('qrScannerError').innerText = 'Camera access denied: ' + err;
   });
@@ -511,7 +562,7 @@ function openQrScanner() {
 
 function closeQrScanner() {
   if (html5QrCode) {
-    html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(() => {});
+    html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
     html5QrCode = null;
   }
   document.getElementById('qrScannerModal').style.display = 'none';
@@ -531,32 +582,36 @@ function startLoginQrScanner() {
 
   const readerContainer = document.getElementById('loginQrReader');
   const statusEl = document.getElementById('loginQrStatus');
-  
   readerContainer.style.display = 'block';
   readerContainer.innerHTML = '';
-  statusEl.innerText = '📷 Scanning... Please hold your ID card in front of the camera.';
+  statusEl.innerText = '📷 Scanning... Hold ID card in front of camera (10-15cm away)';
   errorEl.innerText = '';
 
   if (typeof Html5Qrcode === "undefined") {
-    errorEl.innerText = 'QR Scanner library not loaded.';
+    errorEl.innerText = 'QR Scanner library not loaded. Please check internet connection.';
     statusEl.innerText = '';
     return;
   }
 
   if (loginQrScanner) {
-    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner.stop().then(() => loginQrScanner.clear()).catch(() => {});
     loginQrScanner = null;
   }
 
   loginQrScanner = new Html5Qrcode("loginQrReader");
-  const config = { fps: 10, qrbox: { width: 200, height: 200 } };
+  const config = {
+    fps: 30,
+    qrbox: { width: 280, height: 280 },
+    aspectRatio: 1.0,
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+  };
 
   loginQrScanner.start(
-    { facingMode: "environment" },
+    { facingMode: "environment", focusMode: "continuous", zoom: 1.0 },
     config,
     async function(decodedText) {
       if (loginQrScanner) {
-        loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+        loginQrScanner.stop().then(() => loginQrScanner.clear()).catch(() => {});
         loginQrScanner = null;
       }
       readerContainer.style.display = 'none';
@@ -589,7 +644,6 @@ function startLoginQrScanner() {
         }
 
         const userData = { id: docSnap.id, ...docSnap.data() };
-        
         if (role === 'student') {
           currentUser = { role: 'student', id: userData.id, name: userData.name };
         } else if (role === 'teacher') {
@@ -603,7 +657,6 @@ function startLoginQrScanner() {
 
         await showApp();
         statusEl.innerText = '✅ Login successful! Welcome ' + currentUser.name;
-
       } catch (err) {
         console.error('QR Login Error:', err);
         errorEl.innerText = 'Login failed: ' + err.message;
@@ -611,9 +664,7 @@ function startLoginQrScanner() {
         readerContainer.style.display = 'none';
       }
     },
-    function(err) {
-      // Ignore continuous scan errors
-    }
+    function(err) { /* ignore scanning errors */ }
   ).catch(err => {
     errorEl.innerText = 'Camera access denied: ' + err;
     statusEl.innerText = '';
@@ -627,12 +678,7 @@ async function adminLogin(username, password) {
   try {
     const passDoc = await db.collection('config').doc('admin').get();
     let storedPass = 'admin123';
-    if (passDoc.exists) {
-      storedPass = passDoc.data().password || 'admin123';
-    } else {
-      await db.collection('config').doc('admin').set({ password: 'admin123' });
-      storedPass = 'admin123';
-    }
+    if (passDoc.exists) storedPass = passDoc.data().password || 'admin123';
     if (username === 'admin' && password === storedPass) {
       currentUser = { role: 'admin', name: 'Admin' };
       await showApp();
@@ -669,12 +715,7 @@ async function loadDataForRole(role) {
       students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       teachers = teachSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       schools = schoolSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (passDoc.exists) {
-        adminPassword = passDoc.data().password || 'admin123';
-      } else {
-        await db.collection('config').doc('admin').set({ password: 'admin123' });
-        adminPassword = 'admin123';
-      }
+      if (passDoc.exists) adminPassword = passDoc.data().password || 'admin123';
     } else if (role === 'teacher') {
       const [studSnap, schoolSnap] = await Promise.all([
         db.collection('students').get(),
@@ -697,48 +738,17 @@ async function loadDataForRole(role) {
 }
 
 // ============================== SAVE FUNCTIONS ==============================
-async function saveGlobalImages() {
-  await db.collection('config').doc('images').set({
-    globalBgImage, globalSignatureImage, globalTeacherBgImage, globalTeacherSignatureImage,
-    photoShape, globalTextColor
-  }).catch(console.error);
-}
-async function saveAdminPassword() {
-  await db.collection('config').doc('admin').set({ password: adminPassword }).catch(console.error);
-}
-async function addStudentToFB(s) {
-  const docRef = await db.collection('students').add(s);
-  s.id = docRef.id;
-  return s;
-}
-async function updateStudentInFB(s) {
-  await db.collection('students').doc(s.id).set(s);
-}
-async function deleteStudentFromFB(id) {
-  await db.collection('students').doc(id).delete();
-}
-async function addTeacherToFB(t) {
-  const docRef = await db.collection('teachers').add(t);
-  t.id = docRef.id;
-  return t;
-}
-async function updateTeacherInFB(t) {
-  await db.collection('teachers').doc(t.id).set(t);
-}
-async function deleteTeacherFromFB(id) {
-  await db.collection('teachers').doc(id).delete();
-}
-async function addSchoolToFB(s) {
-  const docRef = await db.collection('schools').add(s);
-  s.id = docRef.id;
-  return s;
-}
-async function updateSchoolInFB(s) {
-  await db.collection('schools').doc(s.id).set(s);
-}
-async function deleteSchoolFromFB(id) {
-  await db.collection('schools').doc(id).delete();
-}
+async function saveGlobalImages() { await db.collection('config').doc('images').set({ globalBgImage, globalSignatureImage, globalTeacherBgImage, globalTeacherSignatureImage, photoShape, globalTextColor }).catch(console.error); }
+async function saveAdminPassword() { await db.collection('config').doc('admin').set({ password: adminPassword }).catch(console.error); }
+async function addStudentToFB(s) { const docRef = await db.collection('students').add(s); s.id = docRef.id; return s; }
+async function updateStudentInFB(s) { await db.collection('students').doc(s.id).set(s); }
+async function deleteStudentFromFB(id) { await db.collection('students').doc(id).delete(); }
+async function addTeacherToFB(t) { const docRef = await db.collection('teachers').add(t); t.id = docRef.id; return t; }
+async function updateTeacherInFB(t) { await db.collection('teachers').doc(t.id).set(t); }
+async function deleteTeacherFromFB(id) { await db.collection('teachers').doc(id).delete(); }
+async function addSchoolToFB(s) { const docRef = await db.collection('schools').add(s); s.id = docRef.id; return s; }
+async function updateSchoolInFB(s) { await db.collection('schools').doc(s.id).set(s); }
+async function deleteSchoolFromFB(id) { await db.collection('schools').doc(id).delete(); }
 
 // ============================== CLASS OPTIONS ==============================
 function getClassOptions() {
@@ -759,12 +769,10 @@ function updateAdminStats() {
   const filterVal = document.getElementById('adminSchoolStatFilter')?.value || '';
   let filteredStudents = students;
   let filteredTeachers = teachers;
-  
   if (filterVal) {
     filteredStudents = students.filter(s => s.school === filterVal);
     filteredTeachers = teachers.filter(t => t.school === filterVal);
   }
-  
   document.getElementById('totalStudents').textContent = filteredStudents.length;
   document.getElementById('totalTeachers').textContent = filteredTeachers.length;
   const males = filteredStudents.filter(s => s.gender === 'Male').length;
@@ -772,12 +780,9 @@ function updateAdminStats() {
   document.getElementById('maleStudents').textContent = males;
   document.getElementById('femaleStudents').textContent = females;
 }
-
 function updateTeacherStats(classFilter) {
   let filtered = students.filter(s => s.school === currentUser.school);
-  if (classFilter && classFilter !== '') {
-    filtered = filtered.filter(s => s.class === classFilter);
-  }
+  if (classFilter && classFilter !== '') filtered = filtered.filter(s => s.class === classFilter);
   document.getElementById('teacherTotalStudents').textContent = filtered.length;
   document.getElementById('teacherMaleStudents').textContent = filtered.filter(s => s.gender === 'Male').length;
   document.getElementById('teacherFemaleStudents').textContent = filtered.filter(s => s.gender === 'Female').length;
@@ -882,12 +887,8 @@ async function autoDeleteDuplicates() {
     });
     await Promise.all(deletions);
 
-    if (currentStudentId && !students.some(s => s.id === currentStudentId)) {
-      currentStudentId = students.length ? students[0].id : null;
-    }
-    if (currentTeacherCardId && !teachers.some(t => t.id === currentTeacherCardId)) {
-      currentTeacherCardId = teachers.length ? teachers[0].id : null;
-    }
+    if (currentStudentId && !students.some(s => s.id === currentStudentId)) currentStudentId = students.length ? students[0].id : null;
+    if (currentTeacherCardId && !teachers.some(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers.length ? teachers[0].id : null;
 
     if (currentUser && currentUser.role === 'admin') {
       if (currentAdminMode === 'student') {
@@ -917,7 +918,7 @@ async function autoDeleteDuplicates() {
   }
 }
 
-// ============================== SCHOOL MANAGEMENT (Admin) ==============================
+// ============================== SCHOOL MANAGEMENT ==============================
 let currentSchoolEditId = null;
 function renderSchoolList() {
   const c = document.getElementById('schoolList');
@@ -925,7 +926,7 @@ function renderSchoolList() {
   if (!schools.length) { c.innerHTML = '<div style="padding:15px;">No schools. Click "Seed Default Schools" to create SCH0001–SCH0010.</div>'; return; }
   c.innerHTML = schools.map(s => `
     <div class="list-item">
-      <span class="item-name"><strong>${escapeHtml(s.code)}</strong> - ${escapeHtml(s.name)}</span>
+      <span class="item-name"><strong>${escapeHtml(s.code)}</strong> - ${escapeHtml(s.name)} ${s.allowPhotoUpdate ? '📸' : ''}</span>
       <div class="item-actions">
         <button class="edit-school-btn" data-id="${escapeHtml(s.id)}">✏️</button>
         <button class="delete-school-btn" data-id="${escapeHtml(s.id)}">🗑️</button>
@@ -955,6 +956,7 @@ function openSchoolForm(id = null) {
     document.getElementById('schoolCode').value = '';
     document.getElementById('schoolName').value = '';
     document.getElementById('schoolAddress').value = '';
+    document.getElementById('schoolAllowPhotoUpdate').checked = false;
   } else {
     const s = schools.find(s => s.id === id);
     if (!s) return;
@@ -963,6 +965,7 @@ function openSchoolForm(id = null) {
     document.getElementById('schoolCode').value = s.code || '';
     document.getElementById('schoolName').value = s.name || '';
     document.getElementById('schoolAddress').value = s.address || '';
+    document.getElementById('schoolAllowPhotoUpdate').checked = s.allowPhotoUpdate || false;
   }
 }
 
@@ -970,11 +973,12 @@ async function saveSchoolForm() {
   const code = document.getElementById('schoolCode').value.trim().toUpperCase();
   const name = document.getElementById('schoolName').value.trim();
   const address = document.getElementById('schoolAddress').value.trim();
+  const allowPhotoUpdate = document.getElementById('schoolAllowPhotoUpdate').checked;
   if (!code || !name) { alert('School Code and Name are required.'); return; }
   if (!/^SCH\d{4}$/.test(code)) { alert('School Code must be in format SCH0001, SCH0002, etc.'); return; }
 
   showLoading(true);
-  const data = { code, name, address };
+  const data = { code, name, address, allowPhotoUpdate };
   if (currentSchoolEditId === null) {
     if (schools.some(s => s.code === code)) { alert('School code already exists!'); showLoading(false); return; }
     const added = await addSchoolToFB(data);
@@ -1001,16 +1005,16 @@ function cancelSchoolForm() {
 
 async function seedDefaultSchools() {
   const defaults = [
-    { code: 'SCH0001', name: 'St. Francis of Assisi School, Lamabari', address: 'Lamabari' },
-    { code: 'SCH0002', name: 'St. Mary\'s High School', address: 'Main Road' },
-    { code: 'SCH0003', name: 'Don Bosco Academy', address: 'Church Street' },
-    { code: 'SCH0004', name: 'Holy Cross School', address: 'Station Road' },
-    { code: 'SCH0005', name: 'Sacred Heart Convent', address: 'Hill Top' },
-    { code: 'SCH0006', name: 'St. Joseph\'s School', address: 'Gandhi Nagar' },
-    { code: 'SCH0007', name: 'Little Flower School', address: 'Rajaji Road' },
-    { code: 'SCH0008', name: 'Carmel Convent School', address: 'Nehru Street' },
-    { code: 'SCH0009', name: 'St. Xavier\'s School', address: 'College Road' },
-    { code: 'SCH0010', name: 'Mount Carmel School', address: 'Civil Lines' }
+    { code: 'SCH0001', name: 'St. Francis of Assisi School, Lamabari', address: 'Lamabari', allowPhotoUpdate: false },
+    { code: 'SCH0002', name: 'St. Mary\'s High School', address: 'Main Road', allowPhotoUpdate: false },
+    { code: 'SCH0003', name: 'Don Bosco Academy', address: 'Church Street', allowPhotoUpdate: false },
+    { code: 'SCH0004', name: 'Holy Cross School', address: 'Station Road', allowPhotoUpdate: false },
+    { code: 'SCH0005', name: 'Sacred Heart Convent', address: 'Hill Top', allowPhotoUpdate: false },
+    { code: 'SCH0006', name: 'St. Joseph\'s School', address: 'Gandhi Nagar', allowPhotoUpdate: false },
+    { code: 'SCH0007', name: 'Little Flower School', address: 'Rajaji Road', allowPhotoUpdate: false },
+    { code: 'SCH0008', name: 'Carmel Convent School', address: 'Nehru Street', allowPhotoUpdate: false },
+    { code: 'SCH0009', name: 'St. Xavier\'s School', address: 'College Road', allowPhotoUpdate: false },
+    { code: 'SCH0010', name: 'Mount Carmel School', address: 'Civil Lines', allowPhotoUpdate: false }
   ];
 
   let added = 0;
@@ -1049,6 +1053,7 @@ function renderStudentList() {
   `).join('');
   attachStudentListEvents();
 }
+
 function attachStudentListEvents() {
   const container = document.getElementById('studentList');
   if (!container) return;
@@ -1071,12 +1076,14 @@ function attachStudentListEvents() {
     showLoading(false);
   }));
 }
+
 function studentItemClick(e) {
   if (e.target.classList.contains('edit-btn') || e.target.classList.contains('delete-btn') || e.target.classList.contains('view-btn')) return;
   currentStudentId = e.currentTarget.dataset.id;
   loadStudentToCard(currentStudentId);
   renderStudentList();
 }
+
 let currentEditId = null;
 function openStudentForm(id = null) {
   const formDiv = document.getElementById('studentFormDiv');
@@ -1104,12 +1111,12 @@ function openStudentForm(id = null) {
     document.getElementById('studentSchool').value = s.school || '';
   }
 }
+
 async function saveStudentForm() {
   const name = document.getElementById('studentName').value.trim();
   if (!name) { alert('Name required'); return; }
   const data = {
-    name,
-    class: document.getElementById('studentClass').value,
+    name, class: document.getElementById('studentClass').value,
     roll: document.getElementById('studentRoll').value,
     dob: document.getElementById('studentDob').value,
     gender: document.getElementById('studentGender').value,
@@ -1144,10 +1151,12 @@ async function saveStudentForm() {
   currentEditId = null;
   showLoading(false);
 }
+
 function cancelStudentForm() {
   document.getElementById('studentFormDiv').style.display = 'none';
   currentEditId = null;
 }
+
 function filterStudentList() {
   const inp = document.getElementById('studentSearch');
   if (inp) studentSearchTerm = inp.value;
@@ -1170,6 +1179,7 @@ function clearStudentCard() {
   applyPhotoShapeToCards();
   applyTextColorToCards();
 }
+
 function loadStudentToCard(id) {
   const s = students.find(s => s.id === id);
   if (!s || !document.getElementById('showName')) return;
@@ -1184,9 +1194,7 @@ function loadStudentToCard(id) {
   applyStudentGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
-  
   generateQR('studentQrCode', s.id, s.school || '');
-  
   if (s.positions) {
     document.querySelectorAll('#studentCard .draggable').forEach(el => {
       const idAttr = el.getAttribute('data-id');
@@ -1197,6 +1205,7 @@ function loadStudentToCard(id) {
     });
   }
 }
+
 function resetStudentPos() {
   if (studentLocked) { alert('Unlock first'); return; }
   document.querySelectorAll('#studentCard .draggable').forEach(el => {
@@ -1206,10 +1215,12 @@ function resetStudentPos() {
   });
   saveStudentPositions();
 }
+
 function toggleStudentLock() {
   studentLocked = !studentLocked;
   document.getElementById('lockBtn').innerText = studentLocked ? '🔒 Locked' : '🔓 Unlock';
 }
+
 function downloadStudentCard() {
   html2canvas(document.getElementById('studentCard'), { scale: 3, backgroundColor: '#ffffff' })
     .then(c => c.toBlob(b => {
@@ -1309,6 +1320,7 @@ function renderTeacherList() {
   `).join('');
   attachTeacherListEvents();
 }
+
 function attachTeacherListEvents() {
   const container = document.getElementById('teacherList');
   if (!container) return;
@@ -1330,12 +1342,14 @@ function attachTeacherListEvents() {
     showLoading(false);
   }));
 }
+
 function teacherItemClick(e) {
   if (e.target.classList.contains('edit-teacher-btn') || e.target.classList.contains('delete-teacher-btn')) return;
   currentTeacherCardId = e.currentTarget.dataset.id;
   loadTeacherToCard(currentTeacherCardId);
   renderTeacherList();
 }
+
 let currentTeacherEditId = null;
 function openTeacherForm(id = null) {
   const formDiv = document.getElementById('teacherFormDiv');
@@ -1363,6 +1377,7 @@ function openTeacherForm(id = null) {
     document.getElementById('teacherAddress').value = t.address || '';
   }
 }
+
 async function saveTeacherForm() {
   const name = document.getElementById('teacherName').value.trim();
   const mobile = document.getElementById('teacherMobile').value.trim();
@@ -1405,15 +1420,18 @@ async function saveTeacherForm() {
   currentTeacherEditId = null;
   showLoading(false);
 }
+
 function cancelTeacherForm() {
   document.getElementById('teacherFormDiv').style.display = 'none';
   currentTeacherEditId = null;
 }
+
 function filterTeacherList() {
   const inp = document.getElementById('teacherSearch');
   if (inp) teacherSearchTerm = inp.value;
   renderTeacherList();
 }
+
 let teacherLocked = false;
 function clearTeacherCard() {
   if (!document.getElementById('teacherCard')) return;
@@ -1425,6 +1443,7 @@ function clearTeacherCard() {
   applyPhotoShapeToCards();
   applyTextColorToCards();
 }
+
 function loadTeacherToCard(id) {
   const t = teachers.find(t => t.id === id);
   if (!t || !document.getElementById('teacherCard')) return;
@@ -1438,9 +1457,7 @@ function loadTeacherToCard(id) {
   applyTeacherGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
-  
   generateQR('teacherQrCode', t.id, t.school || '');
-  
   if (t.positions) {
     document.querySelectorAll('#teacherCard .draggable').forEach(el => {
       const idAttr = el.getAttribute('data-id');
@@ -1451,6 +1468,7 @@ function loadTeacherToCard(id) {
     });
   }
 }
+
 function resetTeacherPos() {
   if (teacherLocked) { alert('Unlock first'); return; }
   document.querySelectorAll('#teacherCard .draggable').forEach(el => {
@@ -1460,10 +1478,12 @@ function resetTeacherPos() {
   });
   saveTeacherPositions();
 }
+
 function toggleTeacherLock() {
   teacherLocked = !teacherLocked;
   document.getElementById('teacherLockBtn').innerText = teacherLocked ? '🔒 Locked' : '🔓 Unlock';
 }
+
 function downloadTeacherCard() {
   html2canvas(document.getElementById('teacherCard'), { scale: 3, backgroundColor: '#ffffff' })
     .then(c => c.toBlob(b => {
@@ -1473,6 +1493,7 @@ function downloadTeacherCard() {
       a.click();
     }));
 }
+
 // --- Drag for Teacher Card ---
 let teacherDrag = null, tOffX = 0, tOffY = 0;
 function tStart(e, element) {
@@ -1570,6 +1591,7 @@ function renderTStudList() {
   c.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); viewStudentInfo(b.dataset.id); }));
   c.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openTStudForm(b.dataset.id); }));
 }
+
 function openTStudForm(id = null) {
   const formDiv = document.getElementById('teacherStudentFormDiv');
   if (!formDiv) return;
@@ -1599,6 +1621,7 @@ function openTStudForm(id = null) {
     document.getElementById('tStudPhoto').value = '';
   }
 }
+
 async function saveTStudForm() {
   const name = document.getElementById('tStudName').value.trim();
   if (!name) { alert('Name required'); return; }
@@ -1637,11 +1660,13 @@ async function saveTStudForm() {
   updateAdminStats();
   showLoading(false);
 }
+
 function cancelTStudForm() {
   document.getElementById('teacherStudentFormDiv').style.display = 'none';
   tStudEditId = null;
 }
 function filterTStudList() { renderTStudList(); }
+
 async function initTeacherUI() {
   document.getElementById('mainContainer').innerHTML = `
     <div class="management-panel wide">
@@ -1693,6 +1718,101 @@ async function initTeacherUI() {
     applyPhotoShapeToCards();
     applyTextColorToCards();
   }, 100);
+}
+
+// ============================== PROFILE MODAL ==============================
+function openProfileModal() {
+  if (!currentUser) return;
+  const modal = document.getElementById('profileModal');
+  const content = document.getElementById('profileContent');
+  let userData = null;
+  let isStudent = currentUser.role === 'student';
+  let isTeacher = currentUser.role === 'teacher';
+  if (isStudent) {
+    userData = students.find(s => s.id === currentUser.id);
+  } else if (isTeacher) {
+    userData = teachers.find(t => t.id === currentUser.id);
+  } else {
+    alert('Profile not available for Admin.');
+    return;
+  }
+  if (!userData) {
+    alert('User data not found.');
+    return;
+  }
+  let allowPhotoUpdate = false;
+  if (userData.school) {
+    const school = schools.find(s => s.code === userData.school);
+    allowPhotoUpdate = school ? school.allowPhotoUpdate : false;
+  }
+  const photoSrc = isStudent ? userData.photoImage : userData.photo;
+  const name = userData.name || 'Unknown';
+  const schoolName = getSchoolName(userData.school);
+
+  content.innerHTML = `
+    <div style="text-align:center;">
+      <h3 style="color:#001B4E;">👤 My Profile</h3>
+      <div style="margin:15px auto; width:120px; height:120px; border-radius:50%; overflow:hidden; border:3px solid #001B4E; background:#eee;">
+        <img src="${escapeHtml(photoSrc || '')}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'">
+      </div>
+      <div class="info-row"><div class="info-label">Name:</div><div class="info-value">${escapeHtml(name)}</div></div>
+      ${isStudent ? `<div class="info-row"><div class="info-label">Class:</div><div class="info-value">${escapeHtml(userData.class || '')}</div></div>
+      <div class="info-row"><div class="info-label">Roll No:</div><div class="info-value">${escapeHtml(userData.roll || '')}</div></div>` : ''}
+      ${isTeacher ? `<div class="info-row"><div class="info-label">Designation:</div><div class="info-value">${escapeHtml(userData.designation || '')}</div></div>
+      <div class="info-row"><div class="info-label">Mobile:</div><div class="info-value">${escapeHtml(userData.mobile || '')}</div></div>` : ''}
+      <div class="info-row"><div class="info-label">School:</div><div class="info-value">${escapeHtml(schoolName)}</div></div>
+      ${allowPhotoUpdate ? `
+        <div style="margin-top:15px;">
+          <label for="profilePhotoUpload" style="cursor:pointer; background:#28a745; color:#fff; padding:10px 20px; border-radius:30px; display:inline-block; font-weight:bold;">📸 Update Photo</label>
+          <input type="file" id="profilePhotoUpload" accept="image/*" style="display:none;" onchange="uploadProfilePhoto(event)">
+          <div id="profilePhotoStatus" style="margin-top:10px; font-size:12px; color:#555;"></div>
+        </div>
+      ` : `
+        <div style="margin-top:15px; color:#888; font-size:13px;">Photo update is currently disabled by admin.</div>
+      `}
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').style.display = 'none';
+}
+
+async function uploadProfilePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('profilePhotoStatus');
+  statusEl.innerText = 'Uploading...';
+  try {
+    const base64 = await fileToBase64(file, 60);
+    if (!base64) { statusEl.innerText = 'Failed to encode image.'; return; }
+    showLoading(true);
+    if (currentUser.role === 'student') {
+      const student = students.find(s => s.id === currentUser.id);
+      if (!student) { showLoading(false); statusEl.innerText = 'Student not found.'; return; }
+      student.photoImage = base64;
+      await updateStudentInFB(student);
+      const idx = students.findIndex(s => s.id === student.id);
+      if (idx !== -1) students[idx] = student;
+      if (currentStudentId === student.id) loadStudentToCard(student.id);
+    } else if (currentUser.role === 'teacher') {
+      const teacher = teachers.find(t => t.id === currentUser.id);
+      if (!teacher) { showLoading(false); statusEl.innerText = 'Teacher not found.'; return; }
+      teacher.photo = base64;
+      await updateTeacherInFB(teacher);
+      const idx = teachers.findIndex(t => t.id === teacher.id);
+      if (idx !== -1) teachers[idx] = teacher;
+      if (currentTeacherCardId === teacher.id) loadTeacherToCard(teacher.id);
+      updateTopBarTitle();
+    }
+    statusEl.innerText = '✅ Photo updated successfully!';
+    setTimeout(openProfileModal, 500);
+  } catch (err) {
+    statusEl.innerText = '❌ Error: ' + err.message;
+  } finally {
+    showLoading(false);
+  }
 }
 
 // ============================== GLOBAL IMAGES & VIEW ==============================
@@ -1824,6 +1944,7 @@ async function refreshData() {
   }
   updateTopBarTitle();
   checkConnection();
+  updateBanner();
 }
 
 // ============================== SHAPE & COLOR CHANGE ==============================
@@ -1859,9 +1980,7 @@ async function importBackup(file) {
       await Promise.all(students.map(s => deleteStudentFromFB(s.id)));
       await Promise.all(teachers.map(t => deleteTeacherFromFB(t.id)));
       await Promise.all(schools.map(s => deleteSchoolFromFB(s.id)));
-      students = [];
-      teachers = [];
-      schools = [];
+      students = []; teachers = []; schools = [];
       for (const s of data.schools) { const added = await addSchoolToFB(s); schools.push(added); }
       for (const s of data.students) { const added = await addStudentToFB(s); students.push(added); }
       for (const t of data.teachers) { const added = await addTeacherToFB(t); teachers.push(added); }
@@ -2037,13 +2156,13 @@ async function generatePrintSheet() {
         else photoBox.classList.add('photo-shape-rounded');
       }
       tempCard.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
-      
+
       const qrContainer = tempCard.querySelector('#printQrCode');
       if (qrContainer && s) {
         new QRCode(qrContainer, {
           text: JSON.stringify({ id: s.id, school: s.school || '' }),
-          width: 51,
-          height: 51,
+          width: 52,
+          height: 52,
           colorDark: "#001B4E",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
@@ -2243,6 +2362,9 @@ function renderInstitutionModeHTML() {
         <label>School Code (e.g., SCH0001)</label><input id="schoolCode" placeholder="SCH0001">
         <label>School Name</label><input id="schoolName" placeholder="St. Francis of Assisi School">
         <label>Address (optional)</label><textarea id="schoolAddress" placeholder="School address..."></textarea>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+          <input type="checkbox" id="schoolAllowPhotoUpdate"> Allow Photo Update (Students & Teachers)
+        </label>
         <div class="form-buttons"><button id="saveSchoolBtn">Save School</button><button id="cancelSchoolBtn" class="cancel-btn">Cancel</button></div>
       </div>
     </div>
@@ -2352,6 +2474,13 @@ function initRoleUI() {
     statsRow.style.display = 'none';
     banner.style.display = 'block';
     initTeacherUI();
+    const profileBtn = document.createElement('button');
+    profileBtn.className = 'profile-btn';
+    profileBtn.style.margin = '10px auto';
+    profileBtn.style.display = 'block';
+    profileBtn.textContent = '👤 My Profile';
+    profileBtn.onclick = openProfileModal;
+    document.querySelector('.management-panel.wide')?.appendChild(profileBtn);
   } else {
     toggle.innerHTML = renderModeToggle();
     backupPanel.style.display = 'block';
@@ -2362,6 +2491,7 @@ function initRoleUI() {
     populateSchoolDropdowns();
     document.getElementById('adminSchoolStatFilter')?.addEventListener('change', updateAdminStats);
   }
+  updateBanner();
 }
 
 // ============================== SHOW APP ==============================
@@ -2371,19 +2501,19 @@ async function showApp() {
   await loadDataForRole(currentUser.role);
   updateTopBarTitle();
   initRoleUI();
+  updateBanner();
   setTimeout(attachDragListeners, 200);
   checkConnection();
 }
 
 function logout() {
   if (loginQrScanner) {
-    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner.stop().then(() => loginQrScanner.clear()).catch(() => {});
     loginQrScanner = null;
   }
   document.getElementById('loginQrReader').style.display = 'none';
   document.getElementById('loginQrReader').innerHTML = '';
   document.getElementById('loginQrStatus').innerText = '';
-  
   currentUser = null;
   students = [];
   teachers = [];
@@ -2414,14 +2544,12 @@ function updateTopBarTitle() {
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('mainApp').style.display = 'none';
 
-  // QR Login Button
   document.getElementById('loginQrBtn').addEventListener('click', function() {
     document.getElementById('loginError').innerText = '';
     document.getElementById('loginQrStatus').innerText = '';
     startLoginQrScanner();
   });
 
-  // Admin Login Button
   document.getElementById('adminLoginBtn').addEventListener('click', async function() {
     const username = document.getElementById('adminUsername').value.trim();
     const password = document.getElementById('adminPassword').value.trim();
@@ -2434,13 +2562,11 @@ function updateTopBarTitle() {
     await adminLogin(username, password);
   });
 
-  // Toggle Admin Login
   document.getElementById('toggleAdminLogin').addEventListener('click', function(e) {
     e.preventDefault();
     const qrSection = document.getElementById('qrLoginSection');
     const adminSection = document.getElementById('adminLoginSection');
     const toggleLink = this;
-
     if (adminSection.style.display === 'none') {
       qrSection.style.display = 'none';
       adminSection.style.display = 'block';
@@ -2460,22 +2586,28 @@ function updateTopBarTitle() {
     }
   });
 
-  // Post-login Scan Button
+  document.getElementById('profileBtn').addEventListener('click', function() {
+    if (!currentUser) return;
+    if (currentUser.role === 'admin') {
+      alert('Admin profile not available.');
+      return;
+    }
+    openProfileModal();
+  });
+
   document.getElementById('scanQrBtn').addEventListener('click', openQrScanner);
 })();
 
 // ============================== EVENT LISTENERS ==============================
 document.getElementById('loginRole').addEventListener('change', function() {
   if (loginQrScanner) {
-    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner.stop().then(() => loginQrScanner.clear()).catch(() => {});
     loginQrScanner = null;
   }
   document.getElementById('loginQrReader').style.display = 'none';
   document.getElementById('loginQrReader').innerHTML = '';
   document.getElementById('loginQrStatus').innerText = '';
   document.getElementById('loginError').innerText = '';
-  
-  // Reset toggle state
   const qrSection = document.getElementById('qrLoginSection');
   const adminSection = document.getElementById('adminLoginSection');
   const toggleLink = document.getElementById('toggleAdminLogin');
