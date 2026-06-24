@@ -499,20 +499,18 @@ function openQrScanner() {
   document.getElementById('qrScannerError').innerText = '';
 
   if (typeof Html5Qrcode === "undefined") {
-    document.getElementById('qrScannerError').innerText = 'QR Scanner library not loaded. Please check internet connection.';
+    document.getElementById('qrScannerError').innerText = 'QR Scanner library not loaded.';
     return;
   }
 
   html5QrCode = new Html5Qrcode("qr-reader");
   const config = {
     fps: 30,
-    qrbox: { width: 300, height: 300 },
-    aspectRatio: 1.0,
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    qrbox: { width: 300, height: 300 }
   };
 
   html5QrCode.start(
-    { facingMode: "environment", focusMode: "continuous", zoom: 1.0 },
+    { facingMode: "environment" },   // ✅ Exactly 1 key
     config,
     function(decodedText) {
       if (html5QrCode) {
@@ -539,16 +537,16 @@ function openQrScanner() {
             }).catch(() => {
               document.getElementById('qrScannerError').innerText = 'Error fetching student.';
             });
+            return;
           }
         } else {
           document.getElementById('qrScannerError').innerText = 'Invalid QR code format.';
         }
       } catch (e) {
         document.getElementById('qrScannerError').innerText = 'Failed to parse QR. Please try again.';
-        // Auto-retry after error
         setTimeout(() => {
           if (html5QrCode) {
-            html5QrCode.start({ facingMode: "environment", focusMode: "continuous" }, config,
+            html5QrCode.start({ facingMode: "environment" }, config,
               function(text) {}, function(err) {});
           }
         }, 1500);
@@ -588,7 +586,7 @@ function startLoginQrScanner() {
   errorEl.innerText = '';
 
   if (typeof Html5Qrcode === "undefined") {
-    errorEl.innerText = 'QR Scanner library not loaded. Please check internet connection.';
+    errorEl.innerText = 'QR Scanner library not loaded.';
     statusEl.innerText = '';
     return;
   }
@@ -601,13 +599,11 @@ function startLoginQrScanner() {
   loginQrScanner = new Html5Qrcode("loginQrReader");
   const config = {
     fps: 30,
-    qrbox: { width: 280, height: 280 },
-    aspectRatio: 1.0,
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    qrbox: { width: 280, height: 280 }
   };
 
   loginQrScanner.start(
-    { facingMode: "environment", focusMode: "continuous", zoom: 1.0 },
+    { facingMode: "environment" },   // ✅ Exactly 1 key
     config,
     async function(decodedText) {
       if (loginQrScanner) {
