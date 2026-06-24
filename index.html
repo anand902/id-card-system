@@ -3,27 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ID Card System - Print Portal</title>
+  <title>ID Card System - QR Login</title>
+  
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  
+  <!-- Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
   <style>
     /* ===== RESET & GLOBAL ===== */
     * { margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif; }
     body { background:#edf1f7; padding:20px; }
     .login-container { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:1000; }
-    .login-box { background:#fff; padding:30px; border-radius:20px; width:340px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.2); }
+    .login-box { background:#fff; padding:30px; border-radius:20px; width:360px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.2); max-height:95vh; overflow-y:auto; }
     .login-box h2 { color:#001B4E; margin-bottom:20px; }
     .login-box select, .login-box input { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:1px solid #ccc; }
     .login-box button { width:100%; padding:12px; background:#001B4E; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px; }
+    .login-box .qr-login-btn { background:#28a745; }
+    .login-box .qr-login-btn:hover { background:#218838; }
+    .login-box .toggle-link { color:#001B4E; text-decoration:underline; font-size:12px; cursor:pointer; display:inline-block; margin-top:10px; }
     .error-msg { color:red; margin-top:10px; font-size:13px; }
+    .login-qr-reader { width:100%; max-width:320px; margin:10px auto; border-radius:10px; overflow:hidden; }
+    .login-qr-reader video { width:100%; display:block; }
     .main-app { display:none; }
 
     /* ===== TOP BAR ===== */
-    .top-bar { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px 20px; border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:12px 20px; border-radius:40px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.1); flex-wrap:wrap; gap:10px; }
     .top-bar h1 { color:#001B4E; font-size:1.5rem; display:flex; align-items:center; gap:10px; }
     .top-bar h1 img { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #001B4E; }
+    .top-bar .right-btns { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .logout-btn { background:#dc3545; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
+    .scan-btn { background:#28a745; color:#fff; border:none; padding:8px 20px; border-radius:30px; cursor:pointer; font-weight:bold; }
+    .scan-btn:hover { background:#218838; }
 
     /* Connection status light */
     #connectionStatus { display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle; transition: background 0.3s; }
@@ -41,7 +56,7 @@
     @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-100%); } }
 
     /* ===== STATS ===== */
-    .stats-row { display:flex; gap:20px; justify-content:center; margin-bottom:15px; flex-wrap:wrap; }
+    .stats-row { display:flex; gap:20px; justify-content:center; margin-bottom:15px; flex-wrap:wrap; align-items:center; }
     .stat-circle { width:90px; height:90px; border-radius:50%; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.1); display:flex; flex-direction:column; align-items:center; justify-content:center; border:3px solid #001B4E; }
     .stat-circle .stat-number { font-size:24px; font-weight:bold; color:#001B4E; }
     .stat-circle .stat-label { font-size:11px; color:#555; margin-top:2px; }
@@ -51,9 +66,12 @@
     .teacher-stats .stat-circle { width:70px; height:70px; border-width:2px; }
     .teacher-stats .stat-circle .stat-number { font-size:18px; }
     .teacher-stats .stat-circle .stat-label { font-size:10px; }
+    .stat-filter-wrap { display:flex; gap:10px; align-items:center; width:100%; justify-content:center; flex-wrap:wrap; margin-bottom:5px; }
+    .stat-filter-wrap label { font-weight:bold; color:#001B4E; }
+    .stat-filter-wrap select { padding:8px 20px; border-radius:30px; border:2px solid #001B4E; background:#fff; font-weight:bold; cursor:pointer; }
 
     /* ===== MODE TOGGLE ===== */
-    .mode-toggle { display:flex; gap:10px; justify-content:center; margin-bottom:20px; }
+    .mode-toggle { display:flex; gap:10px; justify-content:center; margin-bottom:20px; flex-wrap:wrap; }
     .mode-btn { padding:10px 25px; font-size:16px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; background:#ccc; color:#333; }
     .mode-btn.active { background:#001B4E; color:#fff; }
 
@@ -61,6 +79,7 @@
     .container { display:flex; gap:25px; flex-wrap:wrap; justify-content:center; }
     .management-panel { width:380px; background:#fff; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15); padding:20px; }
     .management-panel h2 { color:#001B4E; margin-bottom:15px; text-align:center; }
+    .management-panel.wide { width:500px; max-width:100%; }
     .search-box { width:100%; padding:8px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; }
     .list-container { max-height:350px; overflow-y:auto; border:1px solid #ccc; border-radius:10px; margin-bottom:15px; background:#f9f9f9; }
     .list-item { padding:10px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
@@ -68,14 +87,16 @@
     .list-item.selected { background:#bbdef5; font-weight:bold; }
     .item-name { font-size:14px; }
     .item-actions button { margin-left:8px; padding:4px 8px; border:none; border-radius:5px; cursor:pointer; font-size:11px; }
-    .edit-btn, .edit-teacher-btn { background:#ffc107; color:#000; }
-    .delete-btn, .delete-teacher-btn { background:#dc3545; color:#fff; }
+    .edit-btn, .edit-teacher-btn, .edit-school-btn { background:#ffc107; color:#000; }
+    .delete-btn, .delete-teacher-btn, .delete-school-btn { background:#dc3545; color:#fff; }
     .view-btn { background:#17a2b8; color:#fff; }
     .add-btn { width:100%; padding:10px; background:#28a745; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-bottom:10px; }
+    .seed-btn { width:100%; padding:10px; background:#6f42c1; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer; margin-bottom:10px; }
     .data-form { background:#f1f1f1; padding:15px; border-radius:15px; margin-top:10px; }
     .data-form h3 { margin-bottom:10px; color:#001B4E; }
     .data-form label { font-weight:bold; font-size:12px; display:block; margin-top:8px; }
-    .data-form input, .data-form select { width:100%; padding:8px; margin-top:3px; border-radius:8px; border:1px solid #ccc; font-size:13px; }
+    .data-form input, .data-form select, .data-form textarea { width:100%; padding:8px; margin-top:3px; border-radius:8px; border:1px solid #ccc; font-size:13px; }
+    .data-form textarea { height:60px; resize:vertical; }
     .data-form button { margin-top:12px; padding:8px; background:#001B4E; color:#fff; border:none; border-radius:8px; cursor:pointer; }
     .form-buttons { display:flex; gap:10px; }
     .cancel-btn { background:#6c757d !important; }
@@ -105,6 +126,8 @@
     .signature-box { position:absolute; left:175px; top:355px; z-index:5; cursor:move; }
     .signature-box img { width:70px; height:auto; display:block; mix-blend-mode:multiply; pointer-events:none; }
     .principal-text { position:absolute; left:185px; top:392px; font-size:8px; font-weight:bold; color:#001B4E; z-index:5; cursor:move; }
+    .qr-code-box { position:absolute; width:55px; height:55px; left:20px; top:355px; z-index:5; cursor:move; background:#fff; border-radius:4px; box-shadow:0 1px 4px rgba(0,0,0,0.1); padding:2px; }
+    .qr-code-box canvas, .qr-code-box img { width:100% !important; height:100% !important; }
     .draggable { cursor:move; user-select:none; }
     .dragging { opacity:0.7; outline:2px dashed #E3A81C; }
     .card-buttons { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
@@ -130,6 +153,8 @@
     .modal-close { position:absolute; top:10px; right:15px; font-size:24px; cursor:pointer; color:#001B4E; }
     .loading-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:3000; display:none; }
     .loading-spinner { background:white; padding:20px; border-radius:10px; font-weight:bold; }
+    #qr-reader { width: 100%; max-width: 500px; margin: 0 auto; }
+    #qr-reader video { width: 100%; max-width: 500px; border-radius: 10px; }
 
     /* ===== PRINT SHEET ===== */
     .print-sheet { display:block; background:white; margin:10px auto; border:1px solid #ccc; max-width:100%; height:auto; box-shadow:0 0 10px rgba(0,0,0,0.1); }
@@ -152,14 +177,36 @@
 <div id="loginContainer" class="login-container">
   <div class="login-box">
     <h2>🔐 ID Card Login</h2>
+    <p style="color:#555; font-size:13px; margin-bottom:15px;">
+      Scan your ID card QR code to login (Student/Teacher)<br>
+      <span style="font-size:11px;">Or click "Admin Login" below</span>
+    </p>
+
     <select id="loginRole">
       <option value="student">👨‍🎓 Student</option>
       <option value="teacher">👩‍🏫 Teacher</option>
       <option value="admin">⚙️ Admin</option>
     </select>
-    <input type="text" id="loginMobile" placeholder="Mobile Number (Student/Teacher) or Username (Admin)">
-    <input type="text" id="loginDob" placeholder="Date of Birth (DD/MM/YYYY) or Password (Admin)">
-    <button id="loginBtn">Login</button>
+
+    <!-- QR Login Section -->
+    <div id="qrLoginSection">
+      <button id="loginQrBtn" class="qr-login-btn">📷 Scan QR to Login</button>
+      <div id="loginQrReader" class="login-qr-reader" style="display:none;"></div>
+      <div id="loginQrStatus" style="color:#555; font-size:12px; margin-top:5px;"></div>
+    </div>
+
+    <!-- Admin Login Section (hidden by default) -->
+    <div id="adminLoginSection" style="display:none;">
+      <input type="text" id="adminUsername" placeholder="Username" value="admin">
+      <input type="password" id="adminPassword" placeholder="Password">
+      <button id="adminLoginBtn" style="background:#001B4E;">🔑 Admin Login</button>
+    </div>
+
+    <!-- Toggle Link -->
+    <div style="margin-top:10px;">
+      <a href="#" id="toggleAdminLogin" class="toggle-link">🔐 Admin Login</a>
+    </div>
+
     <div id="loginError" class="error-msg"></div>
   </div>
 </div>
@@ -171,10 +218,10 @@
 <div id="mainApp" class="main-app">
   <!-- Top Bar -->
   <div class="top-bar">
-    <h1 id="topBarTitle">📇 ID Card Management System</h1>
-    <div>
+    <h1 id="topBarTitle">📇 ID Card System</h1>
+    <div class="right-btns">
+      <button class="scan-btn" id="scanQrBtn">📷 Scan QR</button>
       <button class="refresh-btn" id="refreshTopBtn" style="margin-right:10px;">🔄 Refresh</button>
-      <!-- Connection status light -->
       <span id="connectionStatus" style="display:inline-block; width:14px; height:14px; border-radius:50%; background:grey; margin:0 12px; vertical-align:middle;" title="Checking connection..."></span>
       <button class="logout-btn" id="logoutBtn">🚪 Logout</button>
     </div>
@@ -183,7 +230,7 @@
   <!-- School Banner -->
   <div class="school-banner" id="schoolBanner">
     <span class="marquee-track">
-      ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp; ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp; ST. FRANCIS OF ASSISI SCHOOL, LAMABARI &nbsp;&nbsp;&nbsp;
+      MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp; MULTI-SCHOOL ID CARD SYSTEM &nbsp;&nbsp;&nbsp;
     </span>
   </div>
 
@@ -197,8 +244,14 @@
     <input type="file" id="importBackupFile" accept=".json" style="display:none;">
   </div>
 
-  <!-- Admin Stats -->
-  <div id="adminStatsRow" class="stats-row" style="display:none;">
+  <!-- Admin Stats with School Filter -->
+  <div id="adminStatsRow" class="stats-row" style="display:none; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;">
+    <div class="stat-filter-wrap">
+      <label for="adminSchoolStatFilter">🏫 Filter by School:</label>
+      <select id="adminSchoolStatFilter" style="padding:8px 20px; border-radius:30px; border:2px solid #001B4E; background:#fff; font-weight:bold; cursor:pointer;">
+        <option value="">-- All Schools --</option>
+      </select>
+    </div>
     <div class="stat-circle"><span class="stat-number" id="totalStudents">0</span><span class="stat-label">Students</span></div>
     <div class="stat-circle male"><span class="stat-number" id="maleStudents">0</span><span class="stat-label">Male</span></div>
     <div class="stat-circle female"><span class="stat-number" id="femaleStudents">0</span><span class="stat-label">Female</span></div>
@@ -213,13 +266,26 @@
 </div>
 
 <!-- ===== MODALS ===== -->
+<!-- QR Scanner Modal (Post-Login) -->
+<div id="qrScannerModal" class="modal">
+  <div class="modal-content" style="max-width:600px;">
+    <span class="modal-close" onclick="closeQrScanner()">&times;</span>
+    <h3 style="color:#001B4E; text-align:center;">📷 Scan QR</h3>
+    <p style="text-align:center; color:#555; margin-bottom:15px;">Hold the ID card in front of the camera.</p>
+    <div id="qr-reader"></div>
+    <div id="qrScannerError" style="color:red; text-align:center; margin-top:10px;"></div>
+    <button onclick="closeQrScanner()" style="width:100%; padding:10px; margin-top:15px; background:#6c757d; color:#fff; border:none; border-radius:10px; cursor:pointer;">Close Scanner</button>
+  </div>
+</div>
+
 <!-- Print Portal Modal -->
 <div id="printPortalModal" class="modal">
   <div class="modal-content">
     <span class="modal-close" onclick="closePrintPortal()">&times;</span>
     <h3 style="color:#001B4E;">🖨️ Print Portal – A4 Sheet (10 Cards per page)</h3>
-    <div style="display:flex; gap:10px; margin:10px 0;">
+    <div style="display:flex; gap:10px; margin:10px 0; flex-wrap:wrap;">
       <select id="printClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;"><option value="">All Classes</option></select>
+      <select id="printSchoolFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;"><option value="">All Schools</option></select>
       <button id="selectAllPrint" style="padding:8px 12px; background:#001B4E; color:#fff; border:none; border-radius:8px;">Select All</button>
       <button id="deselectAllPrint" style="padding:8px 12px; background:#6c757d; color:#fff; border:none; border-radius:8px;">Deselect All</button>
     </div>
@@ -294,7 +360,6 @@ function checkConnection() {
     });
 }
 
-// Start checking connection
 document.addEventListener('DOMContentLoaded', function() {
   checkConnection();
   connectionCheckInterval = setInterval(checkConnection, 30000);
@@ -309,12 +374,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================== GLOBAL VARIABLES ==============================
-let students = [], teachers = [], currentUser = null;
+let students = [], teachers = [], schools = [], currentUser = null;
 let adminPassword = 'admin123';
 let globalBgImage = '', globalSignatureImage = '';
 let globalTeacherBgImage = '', globalTeacherSignatureImage = '';
 let photoShape = 'rounded';
 let globalTextColor = '#001B4E';
+let html5QrCode = null;
+let loginQrScanner = null;
 
 // ============================== HELPER FUNCTIONS ==============================
 function showLoading(show) {
@@ -334,19 +401,247 @@ function escapeHtml(str) {
   if (!str) return '';
   return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
 }
-function normalizeDateToYMD(str) {
-  if (!str) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const parts = str.split('/');
-  if (parts.length === 3) {
-    if (parseInt(parts[0]) <= 31 && parseInt(parts[1]) <= 12 && parts[2].length === 4) {
-      return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-    }
-    if (parseInt(parts[0]) <= 12 && parseInt(parts[1]) <= 31 && parts[2].length === 4) {
-      return `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
-    }
+function getSchoolName(code) {
+  if (!code) return 'Not Assigned';
+  const school = schools.find(s => s.code === code);
+  return school ? school.name : code;
+}
+function getSchoolOptions(selected = '') {
+  let opts = '<option value="">-- Select School --</option>';
+  schools.forEach(s => {
+    opts += `<option value="${escapeHtml(s.code)}" ${s.code === selected ? 'selected' : ''}>${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`;
+  });
+  return opts;
+}
+function populateSchoolDropdowns() {
+  document.querySelectorAll('.school-dropdown').forEach(sel => {
+    const currentVal = sel.value;
+    sel.innerHTML = getSchoolOptions(currentVal);
+  });
+  const statFilter = document.getElementById('adminSchoolStatFilter');
+  if (statFilter) {
+    const currentVal = statFilter.value;
+    let opts = '<option value="">-- All Schools --</option>';
+    schools.forEach(s => {
+      opts += `<option value="${escapeHtml(s.code)}" ${s.code === currentVal ? 'selected' : ''}>${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`;
+    });
+    statFilter.innerHTML = opts;
   }
-  return str;
+}
+
+// ============================== QR CODE FUNCTIONS ==============================
+function generateQR(elementId, userId, schoolCode) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+  container.innerHTML = '';
+  if (!userId) return;
+  
+  const data = JSON.stringify({ id: userId, school: schoolCode || '' });
+  try {
+    new QRCode(container, {
+      text: data,
+      width: 51,
+      height: 51,
+      colorDark: "#001B4E",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  } catch (e) {
+    console.warn('QR Generation error:', e);
+  }
+}
+
+// ============================== QR SCANNER (Post-Login) ==============================
+function openQrScanner() {
+  document.getElementById('qrScannerModal').style.display = 'flex';
+  const readerContainer = document.getElementById('qr-reader');
+  readerContainer.innerHTML = '';
+  document.getElementById('qrScannerError').innerText = '';
+  
+  if (typeof Html5Qrcode === "undefined") {
+    document.getElementById('qrScannerError').innerText = 'QR Scanner library not loaded.';
+    return;
+  }
+
+  html5QrCode = new Html5Qrcode("qr-reader");
+  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    function(decodedText) {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(() => {});
+      }
+      try {
+        const data = JSON.parse(decodedText);
+        if (data && data.id) {
+          let student = students.find(s => s.id === data.id);
+          if (student) {
+            closeQrScanner();
+            viewStudentInfo(data.id);
+            return;
+          } else {
+            db.collection('students').doc(data.id).get().then(doc => {
+              if (doc.exists) {
+                const s = { id: doc.id, ...doc.data() };
+                if (!students.find(st => st.id === s.id)) students.push(s);
+                closeQrScanner();
+                viewStudentInfo(s.id);
+              } else {
+                document.getElementById('qrScannerError').innerText = 'Student not found.';
+              }
+            }).catch(() => {
+              document.getElementById('qrScannerError').innerText = 'Error fetching student.';
+            });
+            return;
+          }
+        } else {
+          document.getElementById('qrScannerError').innerText = 'Invalid QR code.';
+        }
+      } catch (e) {
+        document.getElementById('qrScannerError').innerText = 'Failed to parse QR.';
+      }
+    },
+    function(err) {}
+  ).catch(err => {
+    document.getElementById('qrScannerError').innerText = 'Camera access denied: ' + err;
+  });
+}
+
+function closeQrScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(() => {});
+    html5QrCode = null;
+  }
+  document.getElementById('qrScannerModal').style.display = 'none';
+  document.getElementById('qr-reader').innerHTML = '';
+}
+
+// ============================== QR LOGIN (Pre-Login) ==============================
+function startLoginQrScanner() {
+  const role = document.getElementById('loginRole').value;
+  const errorEl = document.getElementById('loginError');
+  errorEl.innerText = '';
+
+  if (role === 'admin') {
+    errorEl.innerText = '❌ Admin login via QR is not available. Use Admin Login below.';
+    return;
+  }
+
+  const readerContainer = document.getElementById('loginQrReader');
+  const statusEl = document.getElementById('loginQrStatus');
+  
+  readerContainer.style.display = 'block';
+  readerContainer.innerHTML = '';
+  statusEl.innerText = '📷 Scanning... Please hold your ID card in front of the camera.';
+  errorEl.innerText = '';
+
+  if (typeof Html5Qrcode === "undefined") {
+    errorEl.innerText = 'QR Scanner library not loaded.';
+    statusEl.innerText = '';
+    return;
+  }
+
+  if (loginQrScanner) {
+    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner = null;
+  }
+
+  loginQrScanner = new Html5Qrcode("loginQrReader");
+  const config = { fps: 10, qrbox: { width: 200, height: 200 } };
+
+  loginQrScanner.start(
+    { facingMode: "environment" },
+    config,
+    async function(decodedText) {
+      if (loginQrScanner) {
+        loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+        loginQrScanner = null;
+      }
+      readerContainer.style.display = 'none';
+      statusEl.innerText = '✅ QR scanned! Logging in...';
+
+      try {
+        const data = JSON.parse(decodedText);
+        if (!data || !data.id) {
+          errorEl.innerText = 'Invalid QR code: Missing ID.';
+          statusEl.innerText = '';
+          return;
+        }
+
+        let docRef;
+        if (role === 'student') {
+          docRef = db.collection('students').doc(data.id);
+        } else if (role === 'teacher') {
+          docRef = db.collection('teachers').doc(data.id);
+        } else {
+          errorEl.innerText = 'Invalid role selected.';
+          statusEl.innerText = '';
+          return;
+        }
+
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+          errorEl.innerText = `${role.charAt(0).toUpperCase() + role.slice(1)} not found with this QR.`;
+          statusEl.innerText = '';
+          return;
+        }
+
+        const userData = { id: docSnap.id, ...docSnap.data() };
+        
+        if (role === 'student') {
+          currentUser = { role: 'student', id: userData.id, name: userData.name };
+        } else if (role === 'teacher') {
+          if (!userData.school) {
+            errorEl.innerText = 'Teacher not assigned to a school. Contact Admin.';
+            statusEl.innerText = '';
+            return;
+          }
+          currentUser = { role: 'teacher', id: userData.id, name: userData.name, school: userData.school };
+        }
+
+        await showApp();
+        statusEl.innerText = '✅ Login successful! Welcome ' + currentUser.name;
+
+      } catch (err) {
+        console.error('QR Login Error:', err);
+        errorEl.innerText = 'Login failed: ' + err.message;
+        statusEl.innerText = '';
+        readerContainer.style.display = 'none';
+      }
+    },
+    function(err) {
+      // Ignore continuous scan errors
+    }
+  ).catch(err => {
+    errorEl.innerText = 'Camera access denied: ' + err;
+    statusEl.innerText = '';
+    readerContainer.style.display = 'none';
+  });
+}
+
+// ============================== ADMIN LOGIN ==============================
+async function adminLogin(username, password) {
+  const err = document.getElementById('loginError');
+  try {
+    const passDoc = await db.collection('config').doc('admin').get();
+    let storedPass = 'admin123';
+    if (passDoc.exists) {
+      storedPass = passDoc.data().password || 'admin123';
+    } else {
+      await db.collection('config').doc('admin').set({ password: 'admin123' });
+      storedPass = 'admin123';
+    }
+    if (username === 'admin' && password === storedPass) {
+      currentUser = { role: 'admin', name: 'Admin' };
+      await showApp();
+    } else {
+      err.innerText = 'Invalid admin credentials';
+    }
+  } catch (e) {
+    err.innerText = 'Admin login error: ' + e.message;
+  }
 }
 
 // ============================== ROLE-BASED DATA FETCH ==============================
@@ -365,13 +660,15 @@ async function loadDataForRole(role) {
     }
 
     if (role === 'admin') {
-      const [studSnap, teachSnap, passDoc] = await Promise.all([
+      const [studSnap, teachSnap, passDoc, schoolSnap] = await Promise.all([
         db.collection('students').get(),
         db.collection('teachers').get(),
-        db.collection('config').doc('admin').get()
+        db.collection('config').doc('admin').get(),
+        db.collection('schools').get()
       ]);
       students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       teachers = teachSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      schools = schoolSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (passDoc.exists) {
         adminPassword = passDoc.data().password || 'admin123';
       } else {
@@ -379,11 +676,16 @@ async function loadDataForRole(role) {
         adminPassword = 'admin123';
       }
     } else if (role === 'teacher') {
-      const studSnap = await db.collection('students').get();
+      const [studSnap, schoolSnap] = await Promise.all([
+        db.collection('students').get(),
+        db.collection('schools').get()
+      ]);
       students = studSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      schools = schoolSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       teachers = [];
     } else if (role === 'student') {
-      // Student loads only their own data later
+      const schoolSnap = await db.collection('schools').get();
+      schools = schoolSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
     students.forEach(s => s._printSelected = false);
   } catch (e) {
@@ -426,6 +728,17 @@ async function updateTeacherInFB(t) {
 async function deleteTeacherFromFB(id) {
   await db.collection('teachers').doc(id).delete();
 }
+async function addSchoolToFB(s) {
+  const docRef = await db.collection('schools').add(s);
+  s.id = docRef.id;
+  return s;
+}
+async function updateSchoolInFB(s) {
+  await db.collection('schools').doc(s.id).set(s);
+}
+async function deleteSchoolFromFB(id) {
+  await db.collection('schools').doc(id).delete();
+}
 
 // ============================== CLASS OPTIONS ==============================
 function getClassOptions() {
@@ -443,17 +756,27 @@ function getClassFilterOptions() {
 
 // ============================== STATS ==============================
 function updateAdminStats() {
-  document.getElementById('totalStudents').textContent = students.length;
-  document.getElementById('totalTeachers').textContent = teachers.length;
-  const males = students.filter(s => s.gender === 'Male').length;
-  const females = students.filter(s => s.gender === 'Female').length;
+  const filterVal = document.getElementById('adminSchoolStatFilter')?.value || '';
+  let filteredStudents = students;
+  let filteredTeachers = teachers;
+  
+  if (filterVal) {
+    filteredStudents = students.filter(s => s.school === filterVal);
+    filteredTeachers = teachers.filter(t => t.school === filterVal);
+  }
+  
+  document.getElementById('totalStudents').textContent = filteredStudents.length;
+  document.getElementById('totalTeachers').textContent = filteredTeachers.length;
+  const males = filteredStudents.filter(s => s.gender === 'Male').length;
+  const females = filteredStudents.filter(s => s.gender === 'Female').length;
   document.getElementById('maleStudents').textContent = males;
   document.getElementById('femaleStudents').textContent = females;
 }
+
 function updateTeacherStats(classFilter) {
-  let filtered = students;
+  let filtered = students.filter(s => s.school === currentUser.school);
   if (classFilter && classFilter !== '') {
-    filtered = students.filter(s => s.class === classFilter);
+    filtered = filtered.filter(s => s.class === classFilter);
   }
   document.getElementById('teacherTotalStudents').textContent = filtered.length;
   document.getElementById('teacherMaleStudents').textContent = filtered.filter(s => s.gender === 'Male').length;
@@ -464,15 +787,15 @@ function updateTeacherStats(classFilter) {
 function findDuplicates() {
   const map = {};
   students.forEach(s => {
-    const key = ((s.name || '').toLowerCase().trim() + '|' + (s.dob || '').trim());
+    const key = ((s.name || '').toLowerCase().trim() + '|' + (s.dob || '').trim() + '|' + (s.school || ''));
     if (!map[key]) map[key] = [];
     map[key].push(s.id);
   });
   const duplicates = {};
   for (const [key, ids] of Object.entries(map)) {
     if (ids.length > 1) {
-      const [name, dob] = key.split('|');
-      duplicates[key] = { name, dob, ids };
+      const parts = key.split('|');
+      duplicates[key] = { name: parts[0], dob: parts[1], school: parts[2], ids };
     }
   }
   return duplicates;
@@ -491,7 +814,7 @@ function renderDuplicates(containerId) {
   keys.forEach(key => {
     const group = dups[key];
     html += `<div class="duplicate-group">`;
-    html += `<strong>${escapeHtml(group.name)}</strong> (DOB: ${escapeHtml(group.dob)}) – ${group.ids.length} records`;
+    html += `<strong>${escapeHtml(group.name)}</strong> (DOB: ${escapeHtml(group.dob)}) - School: ${escapeHtml(getSchoolName(group.school))} – ${group.ids.length} records`;
     html += `<div style="margin-top:3px; display:flex; gap:5px; flex-wrap:wrap;">`;
     group.ids.forEach(id => {
       const s = students.find(st => st.id === id);
@@ -571,7 +894,7 @@ async function autoDeleteDuplicates() {
         renderStudentList();
         if (currentStudentId) loadStudentToCard(currentStudentId);
         else clearStudentCard();
-      } else {
+      } else if (currentAdminMode === 'teacher') {
         renderTeacherList();
         if (currentTeacherCardId) loadTeacherToCard(currentTeacherCardId);
         else clearTeacherCard();
@@ -594,6 +917,115 @@ async function autoDeleteDuplicates() {
   }
 }
 
+// ============================== SCHOOL MANAGEMENT (Admin) ==============================
+let currentSchoolEditId = null;
+function renderSchoolList() {
+  const c = document.getElementById('schoolList');
+  if (!c) return;
+  if (!schools.length) { c.innerHTML = '<div style="padding:15px;">No schools. Click "Seed Default Schools" to create SCH0001–SCH0010.</div>'; return; }
+  c.innerHTML = schools.map(s => `
+    <div class="list-item">
+      <span class="item-name"><strong>${escapeHtml(s.code)}</strong> - ${escapeHtml(s.name)}</span>
+      <div class="item-actions">
+        <button class="edit-school-btn" data-id="${escapeHtml(s.id)}">✏️</button>
+        <button class="delete-school-btn" data-id="${escapeHtml(s.id)}">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+  c.querySelectorAll('.edit-school-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openSchoolForm(b.dataset.id); }));
+  c.querySelectorAll('.delete-school-btn').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (!confirm(`Delete school ${b.dataset.id}? This will NOT delete associated students/teachers.`)) return;
+    showLoading(true);
+    await deleteSchoolFromFB(b.dataset.id);
+    schools = schools.filter(s => s.id !== b.dataset.id);
+    renderSchoolList();
+    populateSchoolDropdowns();
+    showLoading(false);
+  }));
+}
+
+function openSchoolForm(id = null) {
+  const formDiv = document.getElementById('schoolFormDiv');
+  if (!formDiv) return;
+  formDiv.style.display = 'block';
+  if (!id) {
+    currentSchoolEditId = null;
+    document.getElementById('schoolFormTitle').innerText = 'Add School';
+    document.getElementById('schoolCode').value = '';
+    document.getElementById('schoolName').value = '';
+    document.getElementById('schoolAddress').value = '';
+  } else {
+    const s = schools.find(s => s.id === id);
+    if (!s) return;
+    currentSchoolEditId = id;
+    document.getElementById('schoolFormTitle').innerText = 'Edit School';
+    document.getElementById('schoolCode').value = s.code || '';
+    document.getElementById('schoolName').value = s.name || '';
+    document.getElementById('schoolAddress').value = s.address || '';
+  }
+}
+
+async function saveSchoolForm() {
+  const code = document.getElementById('schoolCode').value.trim().toUpperCase();
+  const name = document.getElementById('schoolName').value.trim();
+  const address = document.getElementById('schoolAddress').value.trim();
+  if (!code || !name) { alert('School Code and Name are required.'); return; }
+  if (!/^SCH\d{4}$/.test(code)) { alert('School Code must be in format SCH0001, SCH0002, etc.'); return; }
+
+  showLoading(true);
+  const data = { code, name, address };
+  if (currentSchoolEditId === null) {
+    if (schools.some(s => s.code === code)) { alert('School code already exists!'); showLoading(false); return; }
+    const added = await addSchoolToFB(data);
+    schools.push(added);
+  } else {
+    const idx = schools.findIndex(s => s.id === currentSchoolEditId);
+    if (idx !== -1) {
+      const updated = { ...schools[idx], ...data };
+      await updateSchoolInFB(updated);
+      schools[idx] = updated;
+    }
+  }
+  document.getElementById('schoolFormDiv').style.display = 'none';
+  currentSchoolEditId = null;
+  renderSchoolList();
+  populateSchoolDropdowns();
+  showLoading(false);
+}
+
+function cancelSchoolForm() {
+  document.getElementById('schoolFormDiv').style.display = 'none';
+  currentSchoolEditId = null;
+}
+
+async function seedDefaultSchools() {
+  const defaults = [
+    { code: 'SCH0001', name: 'St. Francis of Assisi School, Lamabari', address: 'Lamabari' },
+    { code: 'SCH0002', name: 'St. Mary\'s High School', address: 'Main Road' },
+    { code: 'SCH0003', name: 'Don Bosco Academy', address: 'Church Street' },
+    { code: 'SCH0004', name: 'Holy Cross School', address: 'Station Road' },
+    { code: 'SCH0005', name: 'Sacred Heart Convent', address: 'Hill Top' },
+    { code: 'SCH0006', name: 'St. Joseph\'s School', address: 'Gandhi Nagar' },
+    { code: 'SCH0007', name: 'Little Flower School', address: 'Rajaji Road' },
+    { code: 'SCH0008', name: 'Carmel Convent School', address: 'Nehru Street' },
+    { code: 'SCH0009', name: 'St. Xavier\'s School', address: 'College Road' },
+    { code: 'SCH0010', name: 'Mount Carmel School', address: 'Civil Lines' }
+  ];
+
+  let added = 0;
+  for (const def of defaults) {
+    if (!schools.some(s => s.code === def.code)) {
+      const docRef = await db.collection('schools').add(def);
+      schools.push({ id: docRef.id, ...def });
+      added++;
+    }
+  }
+  renderSchoolList();
+  populateSchoolDropdowns();
+  alert(`✅ Added ${added} default schools. SCH0001 to SCH0010 are ready!`);
+}
+
 // ============================== STUDENT MANAGEMENT ==============================
 let currentStudentId = null, studentSearchTerm = '', adminStudentClassFilter = '';
 function renderStudentList() {
@@ -607,7 +1039,7 @@ function renderStudentList() {
   if (!f.length) { c.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
   c.innerHTML = f.map(s => `
     <div class="list-item ${currentStudentId === s.id ? 'selected' : ''}" data-id="${escapeHtml(s.id)}">
-      <span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class || '')})</span>
+      <span class="item-name">${escapeHtml(s.name)} (${escapeHtml(s.class || '')}) ${s.school ? '['+escapeHtml(getSchoolName(s.school))+']' : ''}</span>
       <div class="item-actions">
         <button class="view-btn" data-id="${escapeHtml(s.id)}">👁️ View</button>
         <button class="edit-btn" data-id="${escapeHtml(s.id)}">✏️</button>
@@ -653,8 +1085,8 @@ function openStudentForm(id = null) {
   if (!id) {
     currentEditId = null;
     document.getElementById('formTitle').innerText = 'Add Student';
-    ['studentName', 'studentClass', 'studentRoll', 'studentDob', 'studentGender', 'studentFather', 'studentContact', 'studentAddress']
-      .forEach(x => document.getElementById(x).value = '');
+    ['studentName', 'studentClass', 'studentRoll', 'studentDob', 'studentGender', 'studentFather', 'studentContact', 'studentAddress'].forEach(x => document.getElementById(x).value = '');
+    document.getElementById('studentSchool').value = '';
     document.getElementById('studentPhotoFile').value = '';
   } else {
     const s = students.find(s => s.id === id);
@@ -669,6 +1101,7 @@ function openStudentForm(id = null) {
     document.getElementById('studentFather').value = s.father || '';
     document.getElementById('studentContact').value = s.contact || '';
     document.getElementById('studentAddress').value = s.address || '';
+    document.getElementById('studentSchool').value = s.school || '';
   }
 }
 async function saveStudentForm() {
@@ -683,7 +1116,8 @@ async function saveStudentForm() {
     father: document.getElementById('studentFather').value,
     contact: document.getElementById('studentContact').value,
     address: document.getElementById('studentAddress').value,
-    mobile: document.getElementById('studentContact').value
+    mobile: document.getElementById('studentContact').value,
+    school: document.getElementById('studentSchool').value || ''
   };
   const file = document.getElementById('studentPhotoFile').files[0];
   let photo = '';
@@ -731,6 +1165,7 @@ function clearStudentCard() {
   document.getElementById('showName').innerText = 'YOUR NAME';
   ['showClass', 'showRoll', 'showDob', 'showFather', 'showContact', 'showAddress'].forEach(x => document.getElementById(x).innerText = '');
   document.getElementById('photoPreview').src = '';
+  document.getElementById('studentQrCode').innerHTML = '';
   applyStudentGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
@@ -749,6 +1184,9 @@ function loadStudentToCard(id) {
   applyStudentGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
+  
+  generateQR('studentQrCode', s.id, s.school || '');
+  
   if (s.positions) {
     document.querySelectorAll('#studentCard .draggable').forEach(el => {
       const idAttr = el.getAttribute('data-id');
@@ -862,7 +1300,7 @@ function renderTeacherList() {
   if (!f.length) { c.innerHTML = '<div style="padding:15px;">No teachers.</div>'; return; }
   c.innerHTML = f.map(t => `
     <div class="list-item ${currentTeacherCardId === t.id ? 'selected' : ''}" data-id="${escapeHtml(t.id)}">
-      <span class="item-name">${escapeHtml(t.name)} ${t.classTeacher ? '(' + escapeHtml(t.classTeacher) + ')' : ''}</span>
+      <span class="item-name">${escapeHtml(t.name)} ${t.classTeacher ? '(' + escapeHtml(t.classTeacher) + ')' : ''} ${t.school ? '['+escapeHtml(getSchoolName(t.school))+']' : ''}</span>
       <div class="item-actions">
         <button class="edit-teacher-btn" data-id="${escapeHtml(t.id)}">✏️</button>
         <button class="delete-teacher-btn" data-id="${escapeHtml(t.id)}">🗑️</button>
@@ -906,9 +1344,9 @@ function openTeacherForm(id = null) {
   if (!id) {
     currentTeacherEditId = null;
     document.getElementById('teacherFormTitle').innerText = 'Add Teacher';
-    ['teacherName', 'teacherFatherName', 'teacherMobile', 'teacherDob', 'teacherDesignation', 'teacherAddress']
-      .forEach(x => document.getElementById(x).value = '');
+    ['teacherName', 'teacherFatherName', 'teacherMobile', 'teacherDob', 'teacherDesignation', 'teacherAddress'].forEach(x => document.getElementById(x).value = '');
     document.getElementById('teacherClassTeacher').value = '';
+    document.getElementById('teacherSchool').value = '';
     document.getElementById('teacherPhotoFile').value = '';
   } else {
     const t = teachers.find(t => t.id === id);
@@ -921,6 +1359,7 @@ function openTeacherForm(id = null) {
     document.getElementById('teacherDob').value = t.dob || '';
     document.getElementById('teacherDesignation').value = t.designation || '';
     document.getElementById('teacherClassTeacher').value = t.classTeacher || '';
+    document.getElementById('teacherSchool').value = t.school || '';
     document.getElementById('teacherAddress').value = t.address || '';
   }
 }
@@ -928,7 +1367,9 @@ async function saveTeacherForm() {
   const name = document.getElementById('teacherName').value.trim();
   const mobile = document.getElementById('teacherMobile').value.trim();
   const dob = document.getElementById('teacherDob').value.trim();
+  const school = document.getElementById('teacherSchool').value.trim();
   if (!name || !mobile || !dob) { alert('Name, Mobile, DOB required'); return; }
+  if (!school) { alert('Please select a School.'); return; }
   const data = {
     name,
     fatherName: document.getElementById('teacherFatherName').value.trim(),
@@ -936,6 +1377,7 @@ async function saveTeacherForm() {
     dob,
     designation: document.getElementById('teacherDesignation').value.trim(),
     classTeacher: document.getElementById('teacherClassTeacher').value,
+    school: school,
     address: document.getElementById('teacherAddress').value.trim()
   };
   const file = document.getElementById('teacherPhotoFile').files[0];
@@ -978,6 +1420,7 @@ function clearTeacherCard() {
   document.getElementById('tPhotoPreview').src = '';
   document.getElementById('tShowName').innerText = 'TEACHER NAME';
   ['tShowDesignation', 'tShowFather', 'tShowMobile', 'tShowDob', 'tShowAddress'].forEach(x => document.getElementById(x).innerText = '');
+  document.getElementById('teacherQrCode').innerHTML = '';
   applyTeacherGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
@@ -995,6 +1438,9 @@ function loadTeacherToCard(id) {
   applyTeacherGlobal();
   applyPhotoShapeToCards();
   applyTextColorToCards();
+  
+  generateQR('teacherQrCode', t.id, t.school || '');
+  
   if (t.positions) {
     document.querySelectorAll('#teacherCard .draggable').forEach(el => {
       const idAttr = el.getAttribute('data-id');
@@ -1108,7 +1554,8 @@ function renderTStudList() {
   const filtered = students.filter(s => {
     const nameMatch = s.name.toLowerCase().includes(tStudSearch.toLowerCase()) || (s.class && s.class.toLowerCase().includes(tStudSearch.toLowerCase()));
     const classMatch = teacherSelectedClass === '' || s.class === teacherSelectedClass;
-    return nameMatch && classMatch;
+    const schoolMatch = s.school === currentUser.school;
+    return nameMatch && classMatch && schoolMatch;
   });
   if (!filtered.length) { c.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
   c.innerHTML = filtered.map(s => `
@@ -1164,7 +1611,8 @@ async function saveTStudForm() {
     father: document.getElementById('tStudFather').value,
     contact: document.getElementById('tStudContact').value,
     address: document.getElementById('tStudAddress').value,
-    mobile: document.getElementById('tStudContact').value
+    mobile: document.getElementById('tStudContact').value,
+    school: currentUser.school
   };
   const file = document.getElementById('tStudPhoto').files[0];
   let photo = '';
@@ -1196,8 +1644,8 @@ function cancelTStudForm() {
 function filterTStudList() { renderTStudList(); }
 async function initTeacherUI() {
   document.getElementById('mainContainer').innerHTML = `
-    <div class="management-panel" style="width:500px;max-width:100%;margin:0 auto;">
-      <h2>👩‍🏫 Manage Students</h2>
+    <div class="management-panel wide">
+      <h2>👩‍🏫 Manage Students (${getSchoolName(currentUser.school)})</h2>
       <div class="teacher-stats">
         <div class="stat-circle"><span class="stat-number" id="teacherTotalStudents">0</span><span class="stat-label">Total</span></div>
         <div class="stat-circle male"><span class="stat-number" id="teacherMaleStudents">0</span><span class="stat-label">Male</span></div>
@@ -1287,10 +1735,24 @@ async function handleTeacherSig(file) {
 
 function viewStudentInfo(id) {
   const s = students.find(s => s.id === id);
-  if (!s) return;
+  if (!s) {
+    db.collection('students').doc(id).get().then(doc => {
+      if (doc.exists) {
+        const data = { id: doc.id, ...doc.data() };
+        showStudentProfile(data);
+      } else {
+        alert('Student not found.');
+      }
+    }).catch(() => alert('Error fetching student.'));
+    return;
+  }
+  showStudentProfile(s);
+}
+
+function showStudentProfile(s) {
   document.getElementById('studentViewContent').innerHTML = `
     <div style="text-align:center;">
-      <h3 style="color:#001B4E;">👤 Student Details</h3>
+      <h3 style="color:#001B4E;">👤 Student Details ${s.school ? '['+escapeHtml(getSchoolName(s.school))+']' : ''}</h3>
       <div style="margin:15px auto; width:100px; height:100px; border-radius:50%; overflow:hidden; border:3px solid #001B4E;">
         <img src="${escapeHtml(s.photoImage || '')}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
       </div>
@@ -1300,6 +1762,7 @@ function viewStudentInfo(id) {
       <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
       <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
       <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+      <div class="info-row"><div class="info-label">School:</div><div class="info-value">${escapeHtml(getSchoolName(s.school))}</div></div>
     </div>
   `;
   document.getElementById('studentViewModal').style.display = 'flex';
@@ -1316,16 +1779,19 @@ async function refreshData() {
       renderStudentList();
       if (students.length && !students.find(s => s.id === currentStudentId)) currentStudentId = students[0]?.id || null;
       currentStudentId ? loadStudentToCard(currentStudentId) : clearStudentCard();
-    } else {
+    } else if (currentAdminMode === 'teacher') {
       renderTeacherList();
       if (teachers.length && !teachers.find(t => t.id === currentTeacherCardId)) currentTeacherCardId = teachers[0]?.id || null;
       currentTeacherCardId ? loadTeacherToCard(currentTeacherCardId) : clearTeacherCard();
+    } else if (currentAdminMode === 'institution') {
+      renderSchoolList();
     }
     document.querySelectorAll('.photo-shape-select').forEach(sel => sel.value = photoShape);
     document.querySelectorAll('.text-color-picker').forEach(p => p.value = globalTextColor);
     attachDragListeners();
     applyPhotoShapeToCards();
     applyTextColorToCards();
+    populateSchoolDropdowns();
     const ad = document.getElementById('adminDuplicatesContainer');
     if (ad && ad.style.display === 'block') renderDuplicates('adminDuplicatesContainer');
   } else if (currentUser.role === 'teacher') {
@@ -1351,12 +1817,12 @@ async function refreshData() {
           <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
           <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
           <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+          <div class="info-row"><div class="info-label">School:</div><div class="info-value">${escapeHtml(getSchoolName(s.school))}</div></div>
         </div>
       `;
     }
   }
   updateTopBarTitle();
-  // Also re-check connection after refresh
   checkConnection();
 }
 
@@ -1376,7 +1842,7 @@ async function handleTextColorChange(newColor) {
 
 // ============================== BACKUP ==============================
 function exportAllData() {
-  const backup = { students, teachers };
+  const backup = { students, teachers, schools };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1388,12 +1854,15 @@ async function importBackup(file) {
   reader.onload = async function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.students || !data.teachers) throw new Error('Invalid structure');
+      if (!data.students || !data.teachers || !data.schools) throw new Error('Invalid structure');
       showLoading(true);
       await Promise.all(students.map(s => deleteStudentFromFB(s.id)));
       await Promise.all(teachers.map(t => deleteTeacherFromFB(t.id)));
+      await Promise.all(schools.map(s => deleteSchoolFromFB(s.id)));
       students = [];
       teachers = [];
+      schools = [];
+      for (const s of data.schools) { const added = await addSchoolToFB(s); schools.push(added); }
       for (const s of data.students) { const added = await addStudentToFB(s); students.push(added); }
       for (const t of data.teachers) { const added = await addTeacherToFB(t); teachers.push(added); }
       students.forEach(s => s._printSelected = false);
@@ -1403,10 +1872,13 @@ async function importBackup(file) {
         if (currentAdminMode === 'student') {
           renderStudentList();
           if (students.length) { currentStudentId = students[0].id; loadStudentToCard(currentStudentId); } else clearStudentCard();
-        } else {
+        } else if (currentAdminMode === 'teacher') {
           renderTeacherList();
           if (teachers.length) { currentTeacherCardId = teachers[0].id; loadTeacherToCard(currentTeacherCardId); } else clearTeacherCard();
+        } else if (currentAdminMode === 'institution') {
+          renderSchoolList();
         }
+        populateSchoolDropdowns();
       } else if (currentUser?.role === 'teacher') {
         filterTStudList();
         updateTeacherStats(teacherSelectedClass);
@@ -1448,6 +1920,9 @@ function debouncePrintRefresh() {
 function openPrintPortal() {
   document.getElementById('printPortalModal').style.display = 'flex';
   document.getElementById('printClassFilter').innerHTML = getClassFilterOptions();
+  let schoolOpts = '<option value="">All Schools</option>';
+  schools.forEach(s => schoolOpts += `<option value="${escapeHtml(s.code)}">${escapeHtml(s.code)} - ${escapeHtml(s.name)}</option>`);
+  document.getElementById('printSchoolFilter').innerHTML = schoolOpts;
   renderPrintStudentList();
   debouncePrintRefresh();
 }
@@ -1455,14 +1930,16 @@ function closePrintPortal() { document.getElementById('printPortalModal').style.
 function renderPrintStudentList() {
   const container = document.getElementById('printStudentList');
   const selectedClass = document.getElementById('printClassFilter').value;
+  const selectedSchool = document.getElementById('printSchoolFilter').value;
   let filtered = students;
-  if (selectedClass) filtered = students.filter(s => s.class === selectedClass);
+  if (selectedClass) filtered = filtered.filter(s => s.class === selectedClass);
+  if (selectedSchool) filtered = filtered.filter(s => s.school === selectedSchool);
   if (!filtered.length) { container.innerHTML = '<div style="padding:15px;">No students.</div>'; return; }
   container.innerHTML = filtered.map(s => `
     <div class="list-item">
       <label style="display:flex; align-items:center; gap:10px;">
         <input type="checkbox" class="print-check" value="${escapeHtml(s.id)}" ${s._printSelected ? 'checked' : ''}>
-        <span>${escapeHtml(s.name)} (${escapeHtml(s.class || '')})</span>
+        <span>${escapeHtml(s.name)} (${escapeHtml(s.class || '')}) ${s.school ? '['+escapeHtml(getSchoolName(s.school))+']' : ''}</span>
       </label>
     </div>
   `).join('');
@@ -1477,6 +1954,7 @@ function renderPrintStudentList() {
   });
 }
 document.getElementById('printClassFilter')?.addEventListener('change', renderPrintStudentList);
+document.getElementById('printSchoolFilter')?.addEventListener('change', renderPrintStudentList);
 document.getElementById('selectAllPrint')?.addEventListener('click', () => {
   document.querySelectorAll('.print-check').forEach(cb => { cb.checked = true; const s = students.find(st => st.id === cb.value); if (s) s._printSelected = true; });
   debouncePrintRefresh();
@@ -1559,6 +2037,18 @@ async function generatePrintSheet() {
         else photoBox.classList.add('photo-shape-rounded');
       }
       tempCard.querySelectorAll('.label, .value').forEach(el => el.style.color = globalTextColor);
+      
+      const qrContainer = tempCard.querySelector('#printQrCode');
+      if (qrContainer && s) {
+        new QRCode(qrContainer, {
+          text: JSON.stringify({ id: s.id, school: s.school || '' }),
+          width: 51,
+          height: 51,
+          colorDark: "#001B4E",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
 
       const cardCanvas = await html2canvas(tempCard, { scale: 1, backgroundColor: '#ffffff' });
       hiddenDiv.removeChild(tempCard);
@@ -1601,6 +2091,7 @@ function generateCardHTML(studentId) {
       <img src="${escapeHtml(globalSignatureImage)}">
     </div>
     <div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div>
+    <div class="qr-code-box draggable" data-original-left="20" data-original-top="355" data-id="qr" id="printQrCode"></div>
   `;
 }
 
@@ -1612,7 +2103,7 @@ let currentAdminMode = 'student';
 function renderStudentModeHTML() {
   return `
     <div class="management-panel">
-      <h2>📚 Student Management</h2>
+      <h2>📚 Student Management (All Schools)</h2>
       <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
         <select id="adminStudentClassFilter" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;" onchange="filterAdminStudentByClass()">${getClassFilterOptions()}</select>
         <button id="adminShowDuplicatesBtn" style="background:#6f42c1; color:#fff; padding:8px 16px; border:none; border-radius:8px; cursor:pointer;" onclick="toggleAdminDuplicates()">🔍 Show Duplicates</button>
@@ -1632,6 +2123,8 @@ function renderStudentModeHTML() {
         <label>Father</label><input id="studentFather">
         <label>Contact</label><input id="studentContact">
         <label>Address</label><input id="studentAddress">
+        <label>School</label>
+        <select id="studentSchool" class="school-dropdown">${getSchoolOptions()}</select>
         <label>Photo (max 60KB)</label><input type="file" id="studentPhotoFile" accept="image/*">
         <div class="form-buttons"><button id="saveStudentBtn">Upload to Server</button><button id="cancelStudentBtn" class="cancel-btn">Cancel</button></div>
       </div>
@@ -1652,6 +2145,7 @@ function renderStudentModeHTML() {
         </div>
         <div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="signaturePreview"></div>
         <div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div>
+        <div class="qr-code-box draggable" data-original-left="20" data-original-top="355" data-id="qr" id="studentQrCode"></div>
       </div>
       <div class="global-uploads">
         <label>🖼️ Background:</label><input type="file" id="globalBgUpload" accept="image/*">
@@ -1690,6 +2184,8 @@ function renderTeacherModeHTML() {
         <label>Designation</label><input id="teacherDesignation">
         <label>Class Teacher of</label>
         <select id="teacherClassTeacher">${getClassOptions()}</select>
+        <label>School</label>
+        <select id="teacherSchool" class="school-dropdown">${getSchoolOptions()}</select>
         <label>Address</label><input id="teacherAddress">
         <label>Photo (max 60KB)</label><input type="file" id="teacherPhotoFile" accept="image/*">
         <div class="form-buttons"><button id="saveTeacherBtn">Upload to Server</button><button id="cancelTeacherBtn" class="cancel-btn">Cancel</button></div>
@@ -1710,6 +2206,7 @@ function renderTeacherModeHTML() {
         </div>
         <div class="signature-box draggable" data-original-left="175" data-original-top="355" data-id="signature"><img id="teacherSignaturePreview"></div>
         <div class="principal-text draggable" data-original-left="185" data-original-top="392" data-id="principal">Principal</div>
+        <div class="qr-code-box draggable" data-original-left="20" data-original-top="355" data-id="qr" id="teacherQrCode"></div>
       </div>
       <div class="global-uploads">
         <label>🖼️ Background:</label><input type="file" id="teacherBgUpload" accept="image/*">
@@ -1727,6 +2224,26 @@ function renderTeacherModeHTML() {
         <button id="teacherDownloadBtn">⬇️ Download</button>
         <button id="teacherLockBtn">🔓 Unlock</button>
         <button id="teacherResetBtn">⟳ Reset Positions</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderInstitutionModeHTML() {
+  return `
+    <div class="management-panel wide">
+      <h2>🏫 School Institution Management</h2>
+      <div style="margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="seed-btn" onclick="seedDefaultSchools()">🌱 Seed Default Schools (SCH0001 - SCH0010)</button>
+      </div>
+      <div id="schoolList" class="list-container"></div>
+      <button class="add-btn" id="addSchoolBtn">+ Add New School</button>
+      <div id="schoolFormDiv" class="data-form" style="display:none;">
+        <h3 id="schoolFormTitle">Add School</h3>
+        <label>School Code (e.g., SCH0001)</label><input id="schoolCode" placeholder="SCH0001">
+        <label>School Name</label><input id="schoolName" placeholder="St. Francis of Assisi School">
+        <label>Address (optional)</label><textarea id="schoolAddress" placeholder="School address..."></textarea>
+        <div class="form-buttons"><button id="saveSchoolBtn">Save School</button><button id="cancelSchoolBtn" class="cancel-btn">Cancel</button></div>
       </div>
     </div>
   `;
@@ -1757,7 +2274,9 @@ function switchAdminMode(mode) {
     attachDragListeners();
     applyPhotoShapeToCards();
     applyTextColorToCards();
-  } else {
+    populateSchoolDropdowns();
+    document.getElementById('adminSchoolStatFilter')?.addEventListener('change', updateAdminStats);
+  } else if (mode === 'teacher') {
     container.innerHTML = renderTeacherModeHTML();
     document.getElementById('addTeacherBtn').onclick = () => openTeacherForm(null);
     document.getElementById('saveTeacherBtn').onclick = saveTeacherForm;
@@ -1775,6 +2294,16 @@ function switchAdminMode(mode) {
     attachDragListeners();
     applyPhotoShapeToCards();
     applyTextColorToCards();
+    populateSchoolDropdowns();
+    document.getElementById('adminSchoolStatFilter')?.addEventListener('change', updateAdminStats);
+  } else if (mode === 'institution') {
+    container.innerHTML = renderInstitutionModeHTML();
+    document.getElementById('addSchoolBtn').onclick = () => openSchoolForm(null);
+    document.getElementById('saveSchoolBtn').onclick = saveSchoolForm;
+    document.getElementById('cancelSchoolBtn').onclick = cancelSchoolForm;
+    renderSchoolList();
+    populateSchoolDropdowns();
+    document.getElementById('adminSchoolStatFilter')?.addEventListener('change', updateAdminStats);
   }
 }
 
@@ -1782,6 +2311,7 @@ function renderModeToggle() {
   return `
     <button class="mode-btn active" id="mode-student" onclick="switchAdminMode('student')">📚 Student Mode</button>
     <button class="mode-btn" id="mode-teacher" onclick="switchAdminMode('teacher')">👩‍🏫 Teacher Mode</button>
+    <button class="mode-btn" id="mode-institution" onclick="switchAdminMode('institution')">🏫 Institutions</button>
   `;
 }
 
@@ -1809,6 +2339,7 @@ function initRoleUI() {
             <div class="info-row"><div class="info-label">Father:</div><div class="info-value">${escapeHtml(s.father)}</div></div>
             <div class="info-row"><div class="info-label">Contact:</div><div class="info-value">${escapeHtml(s.contact)}</div></div>
             <div class="info-row"><div class="info-label">Address:</div><div class="info-value">${escapeHtml(s.address)}</div></div>
+            <div class="info-row"><div class="info-label">School:</div><div class="info-value">${escapeHtml(getSchoolName(s.school))}</div></div>
           </div>
         `;
       } else {
@@ -1828,73 +2359,12 @@ function initRoleUI() {
     banner.style.display = 'block';
     updateAdminStats();
     switchAdminMode('student');
+    populateSchoolDropdowns();
+    document.getElementById('adminSchoolStatFilter')?.addEventListener('change', updateAdminStats);
   }
 }
 
-// ============================== LOGIN ==============================
-async function doLogin() {
-  const role = document.getElementById('loginRole').value;
-  const mobileOrUser = document.getElementById('loginMobile').value.trim();
-  const dobOrPass = document.getElementById('loginDob').value.trim();
-  const err = document.getElementById('loginError');
-  err.innerText = '';
-
-  showLoading(true);
-  try {
-    if (role === 'student') {
-      const normalizedDob = normalizeDateToYMD(dobOrPass);
-      const snapshot = await db.collection('students')
-        .where('mobile', '==', mobileOrUser)
-        .where('dob', '==', normalizedDob)
-        .get();
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        const s = { id: doc.id, ...doc.data() };
-        currentUser = { role: 'student', id: s.id, name: s.name };
-        await showApp();
-      } else {
-        err.innerText = 'Invalid mobile or DOB';
-      }
-    } 
-    else if (role === 'teacher') {
-      const normalizedDob = normalizeDateToYMD(dobOrPass);
-      const snapshot = await db.collection('teachers')
-        .where('mobile', '==', mobileOrUser)
-        .where('dob', '==', normalizedDob)
-        .get();
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        const t = { id: doc.id, ...doc.data() };
-        currentUser = { role: 'teacher', id: t.id, name: t.name };
-        await showApp();
-      } else {
-        err.innerText = 'Invalid teacher credentials';
-      }
-    } 
-    else if (role === 'admin') {
-      const passDoc = await db.collection('config').doc('admin').get();
-      let storedPass = 'admin123';
-      if (passDoc.exists) {
-        storedPass = passDoc.data().password || 'admin123';
-      } else {
-        await db.collection('config').doc('admin').set({ password: 'admin123' });
-        storedPass = 'admin123';
-      }
-      if (mobileOrUser === 'admin' && dobOrPass === storedPass) {
-        currentUser = { role: 'admin', name: 'Admin' };
-        await showApp();
-      } else {
-        err.innerText = 'Invalid admin credentials';
-      }
-    }
-  } catch (e) {
-    console.error('Login error:', e);
-    err.innerText = 'Login error: ' + e.message;
-  } finally {
-    showLoading(false);
-  }
-}
-
+// ============================== SHOW APP ==============================
 async function showApp() {
   document.getElementById('loginContainer').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
@@ -1902,18 +2372,24 @@ async function showApp() {
   updateTopBarTitle();
   initRoleUI();
   setTimeout(attachDragListeners, 200);
-  // Check connection after showing app
   checkConnection();
 }
 
 function logout() {
+  if (loginQrScanner) {
+    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner = null;
+  }
+  document.getElementById('loginQrReader').style.display = 'none';
+  document.getElementById('loginQrReader').innerHTML = '';
+  document.getElementById('loginQrStatus').innerText = '';
+  
   currentUser = null;
   students = [];
   teachers = [];
+  schools = [];
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('loginContainer').style.display = 'flex';
-  document.getElementById('loginMobile').value = '';
-  document.getElementById('loginDob').value = '';
 }
 
 function updateTopBarTitle() {
@@ -1923,13 +2399,13 @@ function updateTopBarTitle() {
   if (currentUser.role === 'teacher') {
     const t = teachers.find(tc => tc.id === currentUser.id);
     photoUrl = t ? t.photo || '' : '';
-    titleEl.innerHTML = `<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👩‍🏫 Welcome, ${escapeHtml(currentUser.name)}`;
+    titleEl.innerHTML = `<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👩‍🏫 Welcome, ${escapeHtml(currentUser.name)} (${getSchoolName(currentUser.school)})`;
   } else if (currentUser.role === 'student') {
     const s = students.find(st => st.id === currentUser.id);
     photoUrl = s ? s.photoImage || '' : '';
     titleEl.innerHTML = `<img src="${escapeHtml(photoUrl)}" onerror="this.style.display='none'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #001B4E;"> 👨‍🎓 Welcome, ${escapeHtml(currentUser.name)}`;
   } else {
-    titleEl.innerHTML = '📇 ID Card Management System';
+    titleEl.innerHTML = '📇 ID Card System (Admin)';
   }
 }
 
@@ -1937,27 +2413,88 @@ function updateTopBarTitle() {
 (async function init() {
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('mainApp').style.display = 'none';
+
+  // QR Login Button
+  document.getElementById('loginQrBtn').addEventListener('click', function() {
+    document.getElementById('loginError').innerText = '';
+    document.getElementById('loginQrStatus').innerText = '';
+    startLoginQrScanner();
+  });
+
+  // Admin Login Button
+  document.getElementById('adminLoginBtn').addEventListener('click', async function() {
+    const username = document.getElementById('adminUsername').value.trim();
+    const password = document.getElementById('adminPassword').value.trim();
+    const err = document.getElementById('loginError');
+    err.innerText = '';
+    if (!username || !password) {
+      err.innerText = 'Please enter username and password.';
+      return;
+    }
+    await adminLogin(username, password);
+  });
+
+  // Toggle Admin Login
+  document.getElementById('toggleAdminLogin').addEventListener('click', function(e) {
+    e.preventDefault();
+    const qrSection = document.getElementById('qrLoginSection');
+    const adminSection = document.getElementById('adminLoginSection');
+    const toggleLink = this;
+
+    if (adminSection.style.display === 'none') {
+      qrSection.style.display = 'none';
+      adminSection.style.display = 'block';
+      toggleLink.textContent = '← Back to QR Login';
+      document.getElementById('loginError').innerText = '';
+    } else {
+      qrSection.style.display = 'block';
+      adminSection.style.display = 'none';
+      toggleLink.textContent = '🔐 Admin Login';
+      if (loginQrScanner) {
+        loginQrScanner.stop().then(() => loginQrScanner.clear()).catch(() => {});
+        loginQrScanner = null;
+      }
+      document.getElementById('loginQrReader').style.display = 'none';
+      document.getElementById('loginQrReader').innerHTML = '';
+      document.getElementById('loginQrStatus').innerText = '';
+    }
+  });
+
+  // Post-login Scan Button
+  document.getElementById('scanQrBtn').addEventListener('click', openQrScanner);
 })();
 
 // ============================== EVENT LISTENERS ==============================
 document.getElementById('loginRole').addEventListener('change', function() {
-  const dobInput = document.getElementById('loginDob');
-  if (this.value === 'admin') dobInput.placeholder = 'Password';
-  else dobInput.placeholder = 'Date of Birth (DD/MM/YYYY)';
+  if (loginQrScanner) {
+    loginQrScanner.stop().then(() => { loginQrScanner.clear(); }).catch(() => {});
+    loginQrScanner = null;
+  }
+  document.getElementById('loginQrReader').style.display = 'none';
+  document.getElementById('loginQrReader').innerHTML = '';
+  document.getElementById('loginQrStatus').innerText = '';
+  document.getElementById('loginError').innerText = '';
+  
+  // Reset toggle state
+  const qrSection = document.getElementById('qrLoginSection');
+  const adminSection = document.getElementById('adminLoginSection');
+  const toggleLink = document.getElementById('toggleAdminLogin');
+  qrSection.style.display = 'block';
+  adminSection.style.display = 'none';
+  toggleLink.textContent = '🔐 Admin Login';
 });
+
 document.getElementById('exportBackupBtn')?.addEventListener('click', exportAllData);
 document.getElementById('importBackupBtn')?.addEventListener('click', () => document.getElementById('importBackupFile').click());
 document.getElementById('importBackupFile')?.addEventListener('change', (e) => { if (e.target.files[0]) importBackup(e.target.files[0]); });
 document.getElementById('changePasswordBtn')?.addEventListener('click', openChangePassword);
 document.getElementById('savePasswordBtn')?.addEventListener('click', savePassword);
-document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('printPortalBtn')?.addEventListener('click', openPrintPortal);
 document.getElementById('downloadPrintSheetBtn')?.addEventListener('click', downloadPrintSheets);
 document.getElementById('refreshAdminBtn')?.addEventListener('click', refreshData);
 document.getElementById('refreshTopBtn').addEventListener('click', function() {
   refreshData();
-  // Also check connection manually
   checkConnection();
 });
 </script>
